@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyMNA Pro Web</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="alternate" hreflang="ja" href="index.html">
+<link rel="alternate" hreflang="en" href="index.en.html">
+<style>
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+
+/* Layout: 左に編集ペイン(ネットリスト+条件)、右に結果ペイン(タブ切替)。狭い幅では縦積み。 */
+:root{
+  --bg:#f3f5f6; --panel:#ffffff; --panel2:#eaeff0; --ink:#17232b; --ink2:#4b5c66; --muted:#7a8a93;
+  --line:#d3dce0; --accent:#0b6e7f; --accent-ink:#ffffff;
+  --lo:#2b6cb0; --hi:#c2570c;           /* Min側 / Max側 */
+  --good:#1d7a45; --good-bg:#e0f2e7; --bad:#b3261e; --bad-bg:#fbe4e2; --warn:#8a5a00; --warn-bg:#fdf0d2;
+  --bar:#0b6e7f; --fit:#c2570c;
+  --font:"Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,"Courier New",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a20; --panel:#16252d; --panel2:#1d303a; --ink:#e4edf1; --ink2:#a9bac3; --muted:#7f929c;
+  --line:#2a3f4a; --accent:#4cc3d6; --accent-ink:#06222a;
+  --lo:#6aa7ee; --hi:#f0944f;
+  --good:#6bd49a; --good-bg:#16382a; --bad:#ff8a80; --bad-bg:#42201d; --warn:#f2c35c; --warn-bg:#3d3114;
+  --bar:#4cc3d6; --fit:#f0944f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a20; --panel:#16252d; --panel2:#1d303a; --ink:#e4edf1; --ink2:#a9bac3; --muted:#7f929c;
+  --line:#2a3f4a; --accent:#4cc3d6; --accent-ink:#06222a;
+  --lo:#6aa7ee; --hi:#f0944f;
+  --good:#6bd49a; --good-bg:#16382a; --bad:#ff8a80; --bad-bg:#42201d; --warn:#f2c35c; --warn-bg:#3d3114;
+  --bar:#4cc3d6; --fit:#f0944f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.55;
+  padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:.01em}
+h1 span{color:var(--accent)}
+header p{margin:0;color:var(--ink2);font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;min-width:0}
+.panel h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin:0}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.pb{padding:14px;display:flex;flex-direction:column;gap:12px}
+label{font-size:12px;color:var(--ink2)}
+select,input[type=number],input[type=text],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+textarea{font-family:var(--mono);font-size:12.5px;line-height:1.6;width:100%;min-height:290px;resize:vertical;white-space:pre;overflow:auto;tab-size:8}
+select{width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:3px;flex:1 1 90px;min-width:0}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
+button{font:inherit;font-weight:500;cursor:pointer;border-radius:4px;padding:7px 14px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.sub{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+fieldset{border:0;border-top:1px solid var(--line);margin:0;padding:12px 0 0;display:flex;flex-direction:column;gap:10px;min-width:0}
+legend{padding:0 6px 0 0;float:left;width:100%}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--ink2)}
+.tab[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.view[hidden]{display:none}
+.view{padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--ink2);font-variant-numeric:tabular-nums}
+.chip.good{background:var(--good-bg);color:var(--good);border-color:transparent}
+.chip.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.04em;color:var(--ink2);font-weight:600;background:var(--panel2)}
+td.m{font-family:var(--mono);font-size:12.5px}
+tr:last-child td{border-bottom:0}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:var(--panel2)}
+tr.sel td{background:var(--panel2)}
+tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.st{display:inline-block;min-width:44px;text-align:center;border-radius:3px;padding:0 6px;font-size:12px;font-weight:600}
+.st.PASS{background:var(--good-bg);color:var(--good)}
+.st.FAIL{background:var(--bad-bg);color:var(--bad)}
+.note{font-size:12px;color:var(--ink2);margin:0}
+.msg{border-radius:4px;padding:10px 12px;font-size:13px;white-space:pre-wrap}
+.msg.err{background:var(--bad-bg);color:var(--bad)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--ink2);font-family:var(--font);font-size:11px}
+.chart .nm{fill:var(--ink);font-family:var(--mono);font-size:12px}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .axis{stroke:var(--muted);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.pre{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;margin:0;color:var(--ink)}
+.assign td:last-child{white-space:normal;text-align:left;font-family:var(--mono);font-size:12px}
+.assign td:nth-child(2){text-align:left}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.hint{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+details summary{cursor:pointer;color:var(--ink2);font-size:12px}
+details pre{font-size:12px;color:var(--ink2);white-space:pre-wrap;margin:8px 0 0;font-family:var(--mono)}
+.lang{margin-left:auto;font-size:13px;color:var(--ink2)}
+.lang a{color:var(--accent);text-decoration:none;font-weight:600}
+.lang a:hover{text-decoration:underline}
+.lang b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PyMNA <span>Pro</span> Web</h1>
+    <p>部品公差つき直流動作点解析。ワーストケース / トルネード / モンテカルロ / 抵抗の電力判定</p>
+    <nav class="lang" aria-label="言語"><b>日本語</b> / <a href="index.en.html" hreflang="en" lang="en">English</a></nav>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="入力">
+      <div class="ph"><h2>ネットリスト</h2><span class="sub">DC</span></div>
+      <div class="pb">
+        <div class="field">
+          <label for="preset">プリセット回路</label>
+          <select id="preset"></select>
+        </div>
+        <textarea id="net" spellcheck="false" aria-label="ネットリスト"></textarea>
+        <div class="hint">
+          <p class="note">種別 名前 N+ N- 値 [許容差%] / 抵抗行末に <span style="font-family:var(--mono)">; @P=0.125W @T_S=70 @T_M=155</span></p>
+        </div>
+        <fieldset>
+          <legend class="sub">解析条件</legend>
+          <label class="chk"><input type="checkbox" id="iter" checked> 反復収束法を有効にする</label>
+          <div class="row">
+            <div class="field"><label for="ta">周囲温度 Ta [°C]</label><input type="number" id="ta" value="25" step="1"></div>
+            <div class="field"><label for="runs">MC 試行回数</label><input type="number" id="runs" value="2000" min="10" max="50000" step="100"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="seed">シード(空=ランダム)</label><input type="text" id="seed" value="42" inputmode="numeric"></div>
+            <div class="field"><label for="dist">分布</label>
+              <select id="dist"><option value="gaussian">正規 (±3σ)</option><option value="uniform">一様</option></select></div>
+          </div>
+        </fieldset>
+        <div class="actions">
+          <button class="primary" id="btnRun">▶ ワーストケース解析</button>
+          <button id="btnMc">モンテカルロ</button>
+        </div>
+        <details>
+          <summary>入力ガイド</summary>
+          <pre>R  名前 N+ N- 値 [許容差% または 最小/最大]   例: R R1 1 0 1k 1 / R R2 1 0 1k 0.9k/1.1k
+   許容差は 5 でも 5% でも同じ(±5%)
+V  名前 N+ N- 値 [許容差%]                    例: V V1 1 0 12V 5
+I  名前 N+ N- 値 [許容差%]                    例: I I1 1 0 1mA
+E  名前 N+ N- NC+ NC- 利得   (VCVS)           例: E OP1 3 0 1 2 100k
+F  名前 N+ N- 制御V名 利得 [許容差]  (CCCS)
+G  名前 N+ N- NC+ NC- gm [許容差]    (VCCS)
+H  名前 N+ N- 制御V名 Rm [許容差]    (CCVS)
+C  DCでは開放 / L  DCでは短絡 / D  DCでは無視
+抵抗の定格電力: 行末コメントに @P=0.125W / @P=125mW / @P=1/8W のいずれでも可
+ノード 0 が GND。; または * 行はコメント。
+単位: f p n u m k meg g t (大文字小文字不問、M=ミリ)
+指数表記 1e3、R記法 4k7、末尾単位 12V 1mA 47kΩ も可</pre>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="結果">
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-t="wc" aria-selected="true">ワーストケース</button>
+        <button class="tab" role="tab" data-t="tor" aria-selected="false">トルネード</button>
+        <button class="tab" role="tab" data-t="mc" aria-selected="false">モンテカルロ</button>
+        <button class="tab" role="tab" data-t="asg" aria-selected="false">最悪組合せ</button>
+      </div>
+      <div id="msgs" style="padding:14px 14px 0;display:flex;flex-direction:column;gap:8px" hidden></div>
+
+      <div class="view" id="v-wc">
+        <div class="chips" id="chips"></div>
+        <div>
+          <div class="sub" style="margin-bottom:6px">ノード電圧</div>
+          <div class="tw"><table id="tNodes"></table></div>
+          <p class="note" style="margin-top:6px">行をクリックすると、そのノードのトルネードチャートを表示します。</p>
+        </div>
+        <div>
+          <div class="sub" style="margin-bottom:6px" id="pHead">抵抗の消費電力</div>
+          <div class="tw"><table id="tPower"></table></div>
+        </div>
+      </div>
+
+      <div class="view" id="v-tor" hidden>
+        <div class="row"><div class="field" style="max-width:220px"><label for="torNode">対象ノード</label><select id="torNode"></select></div></div>
+        <div class="legend"><span><i style="background:var(--lo)"></i>部品が Min のとき</span><span><i style="background:var(--hi)"></i>部品が Max のとき</span></div>
+        <div id="torChart"></div>
+        <p class="note" id="torNote"></p>
+      </div>
+
+      <div class="view" id="v-mc" hidden>
+        <div class="chips" id="mcChips"></div>
+        <div class="row"><div class="field" style="max-width:220px"><label for="mcNode">分布を表示するノード</label><select id="mcNode"></select></div></div>
+        <div id="mcChart"></div>
+        <div class="tw"><table id="tMc"></table></div>
+        <p class="note">標準偏差は母集団(ddof=0)、±3σ は 平均 ± 3×標準偏差。正規分布は Min〜Max を ±3σ とみなし範囲にクリップします。</p>
+      </div>
+
+      <div class="view" id="v-asg" hidden>
+        <p class="note">各ノードの電圧が最大 / 最小になる部品の組合せです(typ は省略)。</p>
+        <div class="tw"><table class="assign" id="tAsg"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span>© 2026 Zyutama / MIT License(全文は下記)。Web版は直流解析のコアのみで、過渡解析・回路図生成・LTspice 出力は含みません。</span>
+    <span>入力したネットリストは外部に送信されません。計算はすべてお使いのブラウザ内で行われます。</span>
+    <span>計算結果は参考値です。設計の最終判断は別手段で検証してください。モンテカルロの乱数列はデスクトップ版(NumPy)と異なるため、同じシードでも値は一致しません。</span>
+    <span>ワーストケースの限界: 全組合せの探索ではなく、各部品の感度の符号と反復入れ替えで最悪の組合せを探します。電圧が部品値に対して単調でない回路では、真の最悪値を外すことがあります。</span>
+    <span>電力判定の限界: Max は「各ノード電圧が最大 / 最小になる組合せ」の中だけで評価しています。両端とも GND でない抵抗では、端子間電圧が最大になる組合せを含まず、実際より小さく出る(PASS が楽観側になる)ことがあります。余裕の小さい抵抗は個別に検証してください。</span>
+    <details>
+      <summary>MIT License 全文</summary>
+      <pre>MIT License
+
+Copyright (c) 2026 Zyutama
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+    </details>
+  </footer>
+</div>
+
+<script>
+// ===== core: solver_core / netlist_validator / analysis_suite の JS 移植 =====
+const SI = {f:1e-15,p:1e-12,n:1e-9,u:1e-6,'µ':1e-6,'μ':1e-6,m:1e-3,k:1e3,g:1e9,t:1e12,r:1};
+const UNIT_WORDS = new Set(['v','a','f','h','s','w','hz','ohm','ω','ohms','sec','var','ah','wh']);
+const VALUE_RE = /^\s*([+-]?)(\d*\.?\d+)\s*([a-zµμΩ]+)(\d*)\s*$/i;
+const FLOAT_RE = /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/;
+const NODEF = Symbol('raise');
+// G_ZERO_R は「公称値は 0 でないのに解析中の値だけ 0 になった抵抗」(範囲指定 0/1k の最小側など)用の予備。
+const G_ZERO_R = 1e12, COND_WARN = 1e13, RESIDUAL_WARN = 1e-6;
+
+class NetlistError extends Error {
+  constructor(issues){
+    const errs = issues.filter(i=>i.severity==='ERROR');
+    const body = errs.length ? errs.map(i=>`  - ${i.line?`行 ${i.line}: `:''}${i.message}`).join('\n') : '  - (詳細不明)';
+    super('ネットリストにエラーがあります:\n'+body);
+    this.issues = issues;
+  }
+}
+function scaleOf(alpha){
+  const a = alpha.toLowerCase();
+  if (a.startsWith('meg')) return [1e6,3];
+  if (a && Object.prototype.hasOwnProperty.call(SI,a[0])) return [SI[a[0]],1];
+  return [1,0];
+}
+function parseValue(v, def=NODEF){
+  const s = (v==null?'':String(v)).trim();
+  if (s===''||s==='-'||s.toLowerCase()==='none') return 0;
+  if (FLOAT_RE.test(s)) return Number(s);
+  const m = VALUE_RE.exec(s);
+  if (m){
+    const [,sign,ip,alpha,frac] = m;
+    const [scale,used] = scaleOf(alpha);
+    const rest = alpha.slice(used).toLowerCase();
+    if (used===0 && !UNIT_WORDS.has(rest)) {}
+    else if (frac && used===0) {}
+    else {
+      let num = parseFloat(ip);
+      if (frac) num += parseInt(frac,10)/Math.pow(10,frac.length);
+      const r = num*scale;
+      return sign==='-' ? -r : r;
+    }
+  }
+  if (def!==NODEF) return def;
+  throw new Error(`数値として解釈できません: '${v}'`);
+}
+function applyTol(base, tolField){
+  if (tolField==null || String(tolField).trim()==='') return [base,base];
+  const tol = String(tolField).trim();
+  let lo, hi;
+  if (tol.includes('/')){ const p=tol.split('/'); lo=parseValue(p[0]); hi=parseValue(p[1]); }
+  else {
+    const t = parseValue(tol.endsWith('%') ? tol.slice(0,-1) : tol);   // '5' でも '5%' でも可
+    lo = base*(1-t/100); hi = base*(1+t/100);
+  }
+  // 負の値(例: -5V ±5%)では大小が逆転するので、必ず min <= max に揃える。
+  // 逆転したままだと正規分布のモンテカルロが範囲の端に張り付いて、ばらつきが 0 になる。
+  return lo<=hi ? [lo,hi] : [hi,lo];
+}
+function pulseV1(raw){
+  const m = /^\s*PULSE\s*\((.*)\)\s*$/i.exec(String(raw||'').trim());
+  if (!m) return null;
+  const parts = m[1].split(',').map(x=>x.trim()).filter(x=>x!=='');
+  return parseValue(parts.length?parts[0]:'0');
+}
+function parseFields(row){
+  try { return parseFieldsImpl(row); }
+  catch(e){ throw new Error(`${row.length>1?row[1]:'?'} の値を解釈できません — ${e.message}`); }
+}
+function parseFieldsImpl(row){
+  const t = row[0].toUpperCase();
+  let val=0, raw='0', vmin=0, vmax=0;
+  const at = i => row.length>i ? row[i] : null;
+  if ('RVICL'.includes(t) && t.length===1){
+    raw = at(4)!=null ? row[4] : '0';
+    const pv = (t==='V'||t==='I') ? pulseV1(raw) : null;
+    if (pv!==null){ val=pv; vmin=vmax=val; }
+    else {
+      val = parseValue(raw);
+      const tf = (at(5)!=null && !String(row[5]).toUpperCase().startsWith('IC=')) ? row[5] : null;
+      [vmin,vmax] = applyTol(val,tf);
+    }
+  } else if (t==='E'){
+    raw = at(6)!=null ? row[6] : (at(4)!=null ? row[4] : '0'); val = parseValue(raw); vmin=vmax=val;
+  } else if (t==='F' || t==='H'){
+    raw = at(5)!=null ? row[5] : '0'; val = parseValue(raw); [vmin,vmax]=applyTol(val, at(6));
+  } else if (t==='G'){
+    raw = at(6)!=null ? row[6] : (at(4)!=null ? row[4] : '0'); val = parseValue(raw); [vmin,vmax]=applyTol(val, at(7));
+  } else if (t==='D'){
+    raw = (at(4)!=null && String(row[4]).trim()) ? row[4] : '0.6'; val = parseValue(raw); vmin=vmax=val;
+  }
+  return [val,raw,vmin,vmax];
+}
+function findFloating(rows, pathTypes=['R','V','E','H','L']){
+  const adj = new Map(), nodes = new Set();
+  const add=(a,b)=>{ if(!adj.has(a)) adj.set(a,new Set()); adj.get(a).add(b); };
+  for (const row of rows){
+    if (row.length<4) continue;
+    const t=row[0].toUpperCase(), n1=String(row[2]), n2=String(row[3]);
+    nodes.add(n1); nodes.add(n2);
+    if ((t==='E'||t==='G') && row.length>=6){ nodes.add(String(row[4])); nodes.add(String(row[5])); }
+    if (pathTypes.includes(t)){ add(n1,n2); add(n2,n1); }
+  }
+  nodes.delete('0');
+  const seen = new Set(['0']), st=['0'];
+  while(st.length){ const c=st.pop(); for (const nb of (adj.get(c)||[])) if(!seen.has(nb)){seen.add(nb);st.push(nb);} }
+  return [...nodes].filter(n=>!seen.has(n)).sort();
+}
+const MIN_COLS = {R:5,V:5,I:5,C:5,L:5,D:4,E:7,F:6,G:7,H:6};
+function validate(rows, lineNos){     // lineNos: 各行のエディタ上の行番号(省略時は通し番号)
+  const issues=[], push=(severity,line,code,message)=>issues.push({severity,line,code,message});
+  const names = new Map(), allNodes = new Set(), vnames = new Set();
+  const lineOf = idx => (lineNos && lineNos.length===rows.length) ? lineNos[idx] : idx+1;
+  rows.forEach((row,idx)=>{
+    const ln=lineOf(idx);
+    if (row.length<2){ push('ERROR',ln,'row_too_short',`要素が足りません: ${row.join(' ')||'(空行)'}`); return; }
+    const t=row[0].toUpperCase(), name=row[1];
+    if (!(t in MIN_COLS)){ push('ERROR',ln,'unknown_type',`未知の素子種別 '${row[0]}'`); return; }
+    if (row.length<MIN_COLS[t]){ push('ERROR',ln,'missing_fields',`${t} ${name}: 列が不足しています(${MIN_COLS[t]} 個必要, 実際 ${row.length} 個)`); return; }
+    if (names.has(name)) push('ERROR',ln,'dup_name',`部品名 '${name}' が重複しています(行 ${names.get(name)} と)`);
+    else names.set(name,ln);
+    try { parseFields(row); } catch(e){ push('ERROR',ln,'bad_value',e.message); }
+    const n1=String(row[2]), n2=String(row[3]);
+    allNodes.add(n1); allNodes.add(n2);
+    if (n1===n2) push('WARNING',ln,'self_loop',`${t} ${name}: 両端が同じノード '${n1}' です(この素子は無視されます)`);
+    if (t==='E'||t==='G'){ allNodes.add(String(row[4])); allNodes.add(String(row[5])); }
+    if ('VEH'.includes(t)) vnames.add(name);
+    if (t==='R'){ const v=parseValue(row[4],null); if (v===0) push('WARNING',ln,'zero_ohm',`R ${name}: 抵抗値が 0 です(${n1}-${n2} が短絡されます)`); }
+  });
+  const hasG = allNodes.has('0');
+  if (!hasG) push('ERROR',null,'no_ground',"基準ノード '0'(GND)がどこにも接続されていません");
+  rows.forEach((row,idx)=>{
+    if (row.length<5) return;
+    const t=row[0].toUpperCase();
+    if ((t==='F'||t==='H') && !vnames.has(row[4])) push('ERROR',lineOf(idx),'bad_ctrl_src',`${t} ${row[1]}: 制御電圧源 '${row[4]}' が見つかりません(V/E/H の名前を指定してください)`);
+  });
+  if (hasG) for (const nn of findFloating(rows)) push('ERROR',null,'floating_node',`ノード '${nn}' から GND への直流経路がありません(R/V/E/H/L 経由。抵抗の付け忘れ等を確認してください)`);
+  const par = new Map();
+  const find = x=>{ if(!par.has(x)) par.set(x,x); let r=x; while(par.get(r)!==r) r=par.get(r); while(par.get(x)!==r){const nx=par.get(x);par.set(x,r);x=nx;} return r; };
+  for (const row of rows){
+    if (row.length<4) continue;
+    const t=row[0].toUpperCase();
+    let short = 'VEH'.includes(t) && t.length===1;
+    if (t==='R') short = row.length>4 && parseValue(row[4],1)===0;
+    if (!short) continue;
+    const a=find(String(row[2])), b=find(String(row[3]));
+    if (a===b) push('ERROR',null,'vsource_loop',`電圧源だけでループ(短絡閉路)ができています: ノード '${row[2]}' と '${row[3]}' の間`);
+    else par.set(a,b);
+  }
+  return issues;
+}
+
+function gaussSolve(A, Z){            // 部分ピボット付きガウス消去。A, Z は破壊される。
+  const n=Z.length;
+  for (let c=0;c<n;c++){
+    let p=c, mx=Math.abs(A[c][c]);
+    for (let r=c+1;r<n;r++){ const v=Math.abs(A[r][c]); if (v>mx){mx=v;p=r;} }
+    if (mx<1e-24) throw new NetlistError([{severity:'ERROR',line:null,code:'singular_matrix',
+      message:'MNA 行列が特異で解けません。未接地・電圧源の短絡ループ・従属源の矛盾などが原因です。'}]);
+    if (p!==c){ [A[p],A[c]]=[A[c],A[p]]; [Z[p],Z[c]]=[Z[c],Z[p]]; }
+    const piv=A[c][c];
+    for (let r=c+1;r<n;r++){
+      const f=A[r][c]/piv; if (f===0) continue;
+      const Ar=A[r], Ac=A[c];
+      for (let k=c;k<n;k++) Ar[k]-=f*Ac[k];
+      Z[r]-=f*Z[c];
+    }
+  }
+  const x=new Array(n);
+  for (let r=n-1;r>=0;r--){ let s=Z[r]; for (let k=r+1;k<n;k++) s-=A[r][k]*x[k]; x[r]=s/A[r][r]; }
+  return x;
+}
+function norm1(A){ let m=0; for (let j=0;j<A.length;j++){ let s=0; for (let i=0;i<A.length;i++) s+=Math.abs(A[i][j]); m=Math.max(m,s);} return m; }
+function inverse(A){
+  const n=A.length, cols=[];
+  for (let j=0;j<n;j++){ const e=new Array(n).fill(0); e[j]=1; cols.push(gaussSolve(A.map(r=>r.slice()),e)); }
+  return Array.from({length:n},(_,i)=>cols.map(c=>c[i]));
+}
+
+class MNASolver {
+  constructor(netlist, lineNos){
+    this.netlist = netlist;
+    const issues = validate(netlist, lineNos);
+    if (issues.some(i=>i.severity==='ERROR')) throw new NetlistError(issues);
+    this.validationIssues = issues.filter(i=>i.severity!=='ERROR');
+    this.lastDiag = null;
+    const nodes = new Set();
+    for (const row of netlist){
+      if (row.length<4) continue;
+      nodes.add(String(row[2])); nodes.add(String(row[3]));
+      const t=row[0].toUpperCase();
+      if ((t==='E'||t==='G') && row.length>=6){ nodes.add(String(row[4])); nodes.add(String(row[5])); }
+    }
+    nodes.delete('0');
+    // 0Ω抵抗と(DC では短絡となる)インダクタは、両端のノードを同じ未知数にまとめて厳密に扱う。
+    // 以前は 1e12 S / 1e9 S の巨大コンダクタンスで近似していたが、倍精度の桁落ちで
+    // 0Ωジャンパを挟んだ 1k/2k の分圧が 3.3333V でなく 3.4133V になる等、数%の誤差が出ていた。
+    // nodeMap の値は行列の添字。短絡されたノード同士は同じ値、GND に短絡されたノードは -1。
+    this.shortRows = new Set(netlist.filter(r=>r.length>=4 &&
+      (r[0].toUpperCase()==='L' || (r[0].toUpperCase()==='R' && parseValue(r[4],null)===0))));
+    const par = new Map();
+    const find = x=>{ if(!par.has(x)) par.set(x,x); let r=x; while(par.get(r)!==r) r=par.get(r); while(par.get(x)!==r){const nx=par.get(x);par.set(x,r);x=nx;} return r; };
+    for (const r of this.shortRows){ const a=find(String(r[2])), b=find(String(r[3])); if (a!==b) par.set(a,b); }
+    const gnd = find('0'), rootIdx = new Map();
+    this.nodeMap = {};
+    [...nodes].sort().forEach(n=>{
+      const root = find(n);
+      if (root===gnd) this.nodeMap[n] = -1;
+      else { if (!rootIdx.has(root)) rootIdx.set(root, rootIdx.size); this.nodeMap[n] = rootIdx.get(root); }
+    });
+    this.numN = rootIdx.size;
+    this.vSources = netlist.filter(r=>'VEH'.includes(r[0].toUpperCase()));
+    this.vMap = {}; this.vSources.forEach((r,i)=>{ this.vMap[r[1]]=i; });
+    this.dim = this.numN + this.vSources.length;
+  }
+  build(params){
+    const n=this.dim, A=Array.from({length:n},()=>new Array(n).fill(0)), Z=new Array(n).fill(0);
+    const idx = s=>{ const v=this.nodeMap[String(s)]; return v===undefined?-1:v; };
+    for (const row of this.netlist){
+      if (this.shortRows.has(row)) continue;   // 0Ω抵抗・インダクタ: ノードの統合で表現済み
+      const t=row[0].toUpperCase(), name=row[1];
+      const val = params[name]===undefined ? 0 : params[name];
+      const p=idx(row[2]), q=idx(row[3]);
+      const stampG=(g)=>{ if(p!==-1)A[p][p]+=g; if(q!==-1)A[q][q]+=g; if(p!==-1&&q!==-1){A[p][q]-=g;A[q][p]-=g;} };
+      const vs=()=>{ const v=this.numN+this.vMap[name]; if(p!==-1){A[p][v]+=1;A[v][p]+=1;} if(q!==-1){A[q][v]-=1;A[v][q]-=1;} return v; };
+      if (t==='R') stampG(val!==0 ? 1/val : G_ZERO_R);
+      else if (t==='I'){ if(p!==-1)Z[p]-=val; if(q!==-1)Z[q]+=val; }
+      else if (t==='V'){ const v=vs(); Z[v]=val; }
+      else if (t==='E'){ const v=vs(); const a=idx(row[4]), b=idx(row[5]); if(a!==-1)A[v][a]-=val; if(b!==-1)A[v][b]+=val; }
+      else if (t==='F'){ const c=this.numN+this.vMap[row[4]]; if(p!==-1)A[p][c]+=val; if(q!==-1)A[q][c]-=val; }
+      else if (t==='G'){ const a=idx(row[4]), b=idx(row[5]);
+        if(p!==-1&&a!==-1)A[p][a]-=val; if(p!==-1&&b!==-1)A[p][b]+=val;
+        if(q!==-1&&a!==-1)A[q][a]+=val; if(q!==-1&&b!==-1)A[q][b]-=val; }
+      else if (t==='H'){ const v=vs(); const c=this.numN+this.vMap[row[4]]; A[v][c]-=val; }
+    }
+    return [A,Z];
+  }
+  solve(params, diag=false){
+    const [A,Z]=this.build(params);
+    const A0 = diag ? A.map(r=>r.slice()) : null, Z0 = diag ? Z.slice() : null;
+    const x = gaussSolve(A,Z);
+    if (diag){
+      let cond=Infinity; try { cond = norm1(A0)*norm1(inverse(A0)); } catch(e){}
+      let rn=0, zn=0;
+      for (let i=0;i<this.dim;i++){ let s=-Z0[i]; for (let j=0;j<this.dim;j++) s+=A0[i][j]*x[j]; rn+=s*s; zn+=Z0[i]*Z0[i]; }
+      this.lastDiag = {cond, residual: Math.sqrt(rn)/(Math.sqrt(zn)+1e-30), dim:this.dim};
+    }
+    const volts={'0':0};
+    for (const n in this.nodeMap){ const i=this.nodeMap[n]; volts[n] = i===-1 ? 0 : x[i]; }
+    return volts;
+  }
+}
+
+const natKey = s=>String(s).split(/(\d+)/).map(t=>/^\d+$/.test(t)?parseInt(t,10):t.toLowerCase());
+function natCmp(a,b){
+  const x=natKey(a), y=natKey(b);
+  for (let i=0;i<Math.min(x.length,y.length);i++){
+    if (x[i]===y[i]) continue;
+    if (typeof x[i]===typeof y[i]) return x[i]<y[i]?-1:1;
+    return typeof x[i]==='number'?-1:1;
+  }
+  return x.length-y.length;
+}
+function derated(rp, T, ts, tm){
+  if (rp==null) return null;
+  ts = ts!=null?ts:70; tm = tm!=null?tm:155;
+  if (T<=ts) return rp; if (T>=tm) return 0;
+  return Math.max(0, rp*(1-(T-ts)/(tm-ts)));
+}
+function fmtP(v){
+  if (v==null) return '-';
+  const a=Math.abs(v);
+  if (a>=1) return v.toFixed(3)+' W';
+  if (a>=1e-3) return (v*1e3).toFixed(3)+' mW';
+  if (a>=1e-6) return (v*1e6).toFixed(3)+' uW';
+  return v.toExponential(3).replace(/e([+-])(\d)$/,'e$10$2')+' W';
+}
+function worstCase(solver, comps, iterative){
+  const names = Object.keys(comps);
+  const typ = {}; for (const n of names) typ[n]=comps[n].typ;
+  const vTyp = solver.solve(typ, true);
+  const scenarios = [[typ, vTyp]];
+  const vmin={}, vmax={}, asg=[];
+  const pick = (states)=>{ const p={}; for (const k of names) p[k] = states[k]==='max'?comps[k].max:(states[k]==='min'?comps[k].min:comps[k].typ); return p; };
+  for (const target of Object.keys(solver.nodeMap).sort(natCmp)){
+    const maxS={}, minS={};
+    for (const n of names){
+      const d=comps[n];
+      if (d.min===d.max){ maxS[n]=minS[n]='typ'; continue; }
+      const tp={...typ}; tp[n]=d.max;
+      if (solver.solve(tp)[target] > vTyp[target]){ maxS[n]='max'; minS[n]='min'; }
+      else { maxS[n]='min'; minS[n]='max'; }
+    }
+    if (iterative){
+      for (const [states,mode] of [[maxS,'max'],[minS,'min']]){
+        for (let it=0; it<15; it++){
+          let changed=false;
+          for (const n of names){
+            if (comps[n].min===comps[n].max) continue;
+            const base = solver.solve(pick(states))[target];
+            const old = states[n];
+            states[n] = old==='max'?'min':'max';
+            const trial = solver.solve(pick(states))[target];
+            if ((mode==='max' && trial>base) || (mode==='min' && trial<base)) changed=true;
+            else states[n]=old;
+          }
+          if (!changed) break;
+        }
+      }
+    }
+    const pMax=pick(maxS), vMaxD=solver.solve(pMax);
+    const pMin=pick(minS), vMinD=solver.solve(pMin);
+    vmax[target]=vMaxD[target]; vmin[target]=vMinD[target];
+    scenarios.push([pMax,vMaxD],[pMin,vMinD]);
+    const lst = s=>Object.keys(s).filter(k=>s[k]!=='typ').map(k=>`${k}:${s[k]}`).join(', ');
+    asg.push([`Node ${target} (To MAX)`, lst(maxS)], [`Node ${target} (To MIN)`, lst(minS)]);
+  }
+  return {vTyp, vmin, vmax, scenarios, asg};
+}
+function powerRows(vTyp, scenarios, comps, Ta){
+  const rows=[];
+  for (const r of Object.values(comps).filter(c=>c.type==='R')){
+    const dv = Math.abs((vTyp[r.nPos]||0)-(vTyp[r.nNeg]||0));
+    // 0Ω抵抗(ジャンパ)は P = I²R = 0。そのまま割ると Infinity/NaN になり、定格付きだと誤って FAIL になる。
+    const typP = r.typ>0 ? dv*dv/r.typ : 0;
+    let maxP=0;
+    for (const [,v] of scenarios){
+      const d=Math.abs((v[r.nPos]||0)-(v[r.nNeg]||0));
+      const p = r.min>0 ? d*d/r.min : 0; if (p>maxP) maxP=p;   // 安全側: 分母は常に最小抵抗値
+    }
+    const lim = derated(r.ratedPower, Ta, r.tS, r.tM);
+    let load='-', status='-';
+    if (r.ratedPower){
+      if (lim>0){ load=(maxP/lim*100).toFixed(2)+'%'; status = maxP>lim?'FAIL':'PASS'; }
+      else { load = maxP>0?'Inf%':'0.00%'; status = maxP>0?'FAIL':'PASS'; }
+    }
+    rows.push({name:r.name, typ:fmtP(typP), max:fmtP(maxP), rated:fmtP(r.ratedPower), lim:fmtP(lim), load, status});
+  }
+  return rows;
+}
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function monteCarlo(solver, comps, runs, dist, seed){
+  const rnd = seed==null ? Math.random : mulberry32(seed);
+  const gauss = ()=>{ let u=0; while(u===0) u=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd()); };
+  const names=Object.keys(comps), samples={};
+  for (let i=0;i<runs;i++){
+    const p={};
+    for (const n of names){
+      const d=comps[n];
+      if (d.min===d.max) p[n]=d.typ;
+      else if (dist==='gaussian') p[n]=Math.min(d.max,Math.max(d.min, d.typ+gauss()*(d.max-d.min)/6));
+      else p[n]=d.min+rnd()*(d.max-d.min);
+    }
+    const v=solver.solve(p);
+    for (const k in v){ if (k==='0') continue; (samples[k]||(samples[k]=[])).push(v[k]); }
+  }
+  return samples;
+}
+function sensitivity(solver, vTyp, comps, target){
+  const typ={}; for (const n in comps) typ[n]=comps[n].typ;
+  const base=vTyp[target], out=[];
+  for (const n in comps){
+    const d=comps[n]; if (d.min===d.max) continue;
+    const lo=solver.solve({...typ,[n]:d.min})[target], hi=solver.solve({...typ,[n]:d.max})[target];
+    out.push({name:n, low:lo-base, high:hi-base, swing:Math.abs(hi-lo)});
+  }
+  return out.sort((a,b)=>b.swing-a.swing);
+}
+function buildFromText(text){
+  const raw=text.split('\n'), rows=[], lineMap=[], cmts=[];
+  raw.forEach((l,i)=>{
+    let s=l.trim(); if(!s||s[0]===';'||s[0]==='*') return;
+    let c=''; const k=s.indexOf(';'); if(k>=0){ c=s.slice(k+1); s=s.slice(0,k).trim(); }
+    if(!s) return;
+    rows.push(s.split(/\s+/)); lineMap.push(i+1); cmts.push(c);
+  });
+  if (!rows.length) throw new NetlistError([{severity:'ERROR',line:null,message:'ネットリストが空です'}]);
+  // 行番号は検証側に渡す(後から付け替えると「行 N と重複」のような本文中の番号がずれたまま残る)
+  const solver = new MNASolver(rows, lineMap);
+  const comps={};
+  rows.forEach((row,i)=>{
+    const t=row[0].toUpperCase(), name=row[1];
+    const [val,rawv,vmin,vmax]=parseFields(row);
+    let rp=null, ts=null, tm=null;
+    if (t==='R' && cmts[i]){
+      const pm=/@P=([\d.]+)(?:\/([\d.]+))?([a-zA-Z]+)?/i.exec(cmts[i]);   // 0.125W / 125mW / 1/8W
+      if(pm){ rp=parseValue(pm[1]+(pm[3]||'')); const den=pm[2]?parseFloat(pm[2]):1; if(den>0) rp/=den; }
+      const a=/@T_S=([\d.]+)/i.exec(cmts[i]); if(a) ts=parseFloat(a[1]);
+      const b=/@T_M=([\d.]+)/i.exec(cmts[i]); if(b) tm=parseFloat(b[1]);
+    }
+    comps[name]={typ:val,min:vmin,max:vmax,type:t,raw:rawv,name,nPos:String(row[2]),nNeg:String(row[3]),ratedPower:rp,tS:ts,tM:tm};
+  });
+  return {solver, comps};
+}
+// ===== /core =====
+
+// ===== UI =====
+const PRESETS = [
+  ['power','電力判定デモ (分圧 + @P タグ)',"V\tVin\t1\t0\t12\t5\nR\tR1\t1\t2\t100\t1\t; @P=0.125W @T_S=70 @T_M=155\nR\tR2\t2\t0\t220\t1\t; @P=0.25W @T_S=70 @T_M=155\nR\tR3\t2\t3\t1k\t5\t; @P=0.1W\nR\tR4\t3\t0\t4.7k\t5\t; @P=0.1W"],
+  ['div','R-2R ラダー',"V\tVin\t1\t0\t10\nR\tR1\t1\t2\t1k\t1\nR\tR2\t1\t0\t2k\t1\nR\tR3\t2\t3\t1k\t1\nR\tR4\t2\t0\t2k\t1\nR\tR5\t3\t4\t1k\t1\nR\tR6\t3\t0\t2k\t1\nR\tR7\t4\t5\t1k\t1\nR\tR8\t4\t0\t2k\t1\nR\tR9\t5\t0\t1k\t1"],
+  ['super','重ね合わせ',"V\tV1\t1\t0\t10\nI\tI1\t2\t0\t1m\nR\tR1\t1\t3\t1k\t5\nR\tR2\t2\t3\t2k\t5\nR\tR3\t3\t0\t2k\t5"],
+  ['inv','反転増幅',"V\tVin\t1\t0\t1\nR\tRin\t1\t2\t10k\t1\nR\tRf\t2\t3\t100k\t1\nE\tOP1\t3\t0\t0\t2\t100k"],
+  ['noninv','非反転増幅',"V\tVin\t1\t0\t1\nR\tR1\t3\t2\t90k\t1\nR\tR2\t2\t0\t10k\t1\nE\tOP1\t3\t0\t1\t2\t100k"],
+  ['hsd','HSD 電流モニタ',"V\tV1\t1\t0\t12\nV\tV_sense\t1\t2\t0\nR\tR_load\t2\t0\t12\t10\nF\tF_mirror\t0\t3\tV_sense\t0.001\nR\tR_monitor\t3\t0\t1k"],
+  ['bridge','複合ブリッジ (電源4 + 抵抗8)',"V\tVcc\t1\t0\t12\t1\nV\tVsub\t0\t5\t5\t2\nI\tIsrc\t0\t4\t10m\t5\nI\tIinj\t1\t2\t5m\t1\nR\tRa\t1\t2\t1k\t5\nR\tRb\t2\t0\t1.2k\t5\nR\tRc\t1\t3\t1.5k\t5\nR\tRd\t3\t4\t1k\t5\nR\tRmid\t2\t3\t470\t5\nR\tRe\t4\t0\t2.2k\t5\nR\tRf\t2\t5\t3.3k\t5\nR\tRg\t3\t5\t4.7k\t5"],
+  ['e','素子デモ: E (VCVS)',"V\tVin\t1\t0\t2\nE\tE1\t2\t0\t1\t0\t5\nR\tRL\t2\t0\t1k"],
+  ['f','素子デモ: F (CCCS)',"V\tVin\t1\t0\t5\nR\tRsense\t1\t0\t1k\nF\tF1\t2\t0\tVin\t2\nR\tRL\t2\t0\t1k"],
+  ['g','素子デモ: G (VCCS)',"V\tVin\t1\t0\t2\nR\tRin\t1\t0\t1k\nG\tG1\t2\t0\t1\t0\t2m\nR\tRL\t2\t0\t1k"],
+  ['h','素子デモ: H (CCVS)',"V\tVin\t1\t0\t5\nR\tRsense\t1\t0\t1k\nH\tH1\t0\t2\tVin\t500\nR\tRL\t2\t0\t1k"],
+  ['cl','DC近似: C=開放 / L=短絡',"V\tVin\t1\t0\t10\nR\tR1\t1\t2\t1k\nC\tC1\t2\t0\t1u\nR\tR2\t1\t3\t1k\nL\tL1\t3\t0\t10m"],
+];
+const $ = id=>document.getElementById(id);
+const state = {solver:null, comps:null, vTyp:null, wc:null, mc:null, tornadoNode:null};
+const f4 = v=>(Object.is(v,-0)?0:v).toFixed(4);
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function showMsgs(list){
+  const box=$('msgs'); box.innerHTML='';
+  list.forEach(([cls,text])=>{ const d=document.createElement('div'); d.className='msg '+cls; d.textContent=text; box.appendChild(d); });
+  box.hidden = !list.length;
+}
+function setTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.t===t)));
+  for (const k of ['wc','tor','mc','asg']) $('v-'+k).hidden = k!==t;
+}
+function table(el, head, rows, opts={}){
+  const th='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  el.innerHTML = th + rows.join('');
+}
+function fmtHtmlStatus(s){ return s==='-'?'-':`<span class="st ${s}">${s}</span>`; }
+
+function runWorst(){
+  try {
+    const {solver, comps} = buildFromText($('net').value);
+    const wc = worstCase(solver, comps, $('iter').checked);
+    const Ta = parseFloat($('ta').value); const ta = isNaN(Ta)?25:Ta;
+    const pw = powerRows(wc.vTyp, wc.scenarios, comps, ta);
+    Object.assign(state,{solver,comps,vTyp:wc.vTyp,wc,mc:null});
+    const msgs=[];
+    if (solver.validationIssues.length) msgs.push(['warn', solver.validationIssues.map(i=>`[${i.severity}] ${i.line?`行${i.line}: `:''}${i.message}`).join('\n')]);
+    const d = solver.lastDiag;
+    if (d && (d.cond>COND_WARN || d.residual>RESIDUAL_WARN)) msgs.push(['warn',`数値診断: 条件数 ${d.cond.toExponential(2)} / 相対残差 ${d.residual.toExponential(2)}。結果の精度が低下している可能性があります。`]);
+    showMsgs(msgs);
+
+    const nodes = Object.keys(solver.nodeMap).sort(natCmp);
+    const fails = pw.filter(r=>r.status==='FAIL').length, judged = pw.filter(r=>r.status!=='-').length;
+    const chips=[`<span class="chip">ノード ${nodes.length}</span>`,`<span class="chip">部品 ${Object.keys(comps).length}</span>`,
+      `<span class="chip">未知数 ${d.dim}</span>`,`<span class="chip">条件数 ${d.cond.toExponential(1)}</span>`,
+      `<span class="chip">Ta ${ta} °C</span>`];
+    if (judged) chips.push(fails?`<span class="chip bad">電力 FAIL ${fails} / ${judged}</span>`:`<span class="chip good">電力 全 ${judged} 件 PASS</span>`);
+    $('chips').innerHTML = chips.join('');
+
+    if (!state.tornadoNode || !(state.tornadoNode in solver.nodeMap)) state.tornadoNode = nodes[0];
+    table($('tNodes'), ['ノード','Typ [V]','Min [V]','Max [V]','幅 [mV]'],
+      nodes.map(n=>`<tr class="pick${n===state.tornadoNode?' sel':''}" data-n="${esc(n)}"><td>${esc(n)}</td><td class="m">${f4(wc.vTyp[n])}</td><td class="m">${f4(wc.vmin[n])}</td><td class="m">${f4(wc.vmax[n])}</td><td class="m">${((wc.vmax[n]-wc.vmin[n])*1e3).toFixed(2)}</td></tr>`));
+    $('pHead').textContent = `抵抗の消費電力 (Ta ${ta} °C、定格は軽減後)`;
+    if (pw.length) table($('tPower'), ['抵抗','Typ','Max','定格','上限','負荷','判定'],
+      pw.map(r=>`<tr><td>${esc(r.name)}</td><td class="m">${r.typ}</td><td class="m">${r.max}</td><td class="m">${r.rated}</td><td class="m">${r.lim}</td><td class="m">${r.load}</td><td>${fmtHtmlStatus(r.status)}</td></tr>`));
+    else $('tPower').innerHTML='<tr><td>抵抗がありません</td></tr>';
+    table($('tAsg'), ['対象','部品の状態'], wc.asg.map(a=>`<tr><td>${esc(a[0])}</td><td>${esc(a[1])||'(変動なし)'}</td></tr>`));
+    fillNodeSelects(nodes);
+    drawTornado();
+    $('v-mc').querySelectorAll('#mcChart,#tMc,#mcChips').forEach(e=>e.innerHTML='');
+    return true;
+  } catch(e){
+    showMsgs([['err', e instanceof NetlistError ? e.message : `解析に失敗しました: ${e.message}`]]);
+    setTab('wc');
+    return false;
+  }
+}
+function fillNodeSelects(nodes){
+  for (const id of ['torNode','mcNode']){
+    const sel=$(id), cur = id==='torNode'?state.tornadoNode:(sel.value||nodes[0]);
+    sel.innerHTML = nodes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    sel.value = nodes.includes(cur)?cur:nodes[0];
+  }
+}
+
+function drawTornado(){
+  const n = state.tornadoNode; if (!state.solver || n==null) return;
+  $('torNode').value = n;
+  const data = sensitivity(state.solver, state.vTyp, state.comps, n);
+  const el = $('torChart');
+  if (!data.length){ el.innerHTML=''; $('torNote').textContent='許容差を持つ部品がないため、トルネードチャートは描画できません。'; return; }
+  const maxAbs = Math.max(...data.map(d=>Math.max(Math.abs(d.low),Math.abs(d.high))))||1;
+  const unit = maxAbs<1 ? 1e3 : 1, uname = maxAbs<1 ? 'mV' : 'V';
+  const W=640, L=92, R=70, rowH=28, top=22, bot=34, H=top+bot+rowH*data.length;
+  const half = (W-L-R)/2, cx = L+half;
+  // 目盛りは 1-2-5 系列で、最大値を超える最初の値まで
+  const step = niceStep(maxAbs*unit/3);
+  const lim = Math.ceil(maxAbs*unit/step)*step;
+  const sx = v=>cx + (v*unit/lim)*half;
+  let g='';
+  for (let t=-lim; t<=lim+1e-9; t+=step){
+    const x=sx(t/unit);
+    g+=`<line class="gl" x1="${x}" x2="${x}" y1="${top-6}" y2="${H-bot+4}"/><text x="${x}" y="${H-bot+18}" text-anchor="middle">${trimNum(t)}</text>`;
+  }
+  g+=`<text x="${W-R+24}" y="${H-bot+18}" text-anchor="start">${uname}</text>`;
+  data.forEach((d,i)=>{
+    const y=top+i*rowH+4, h=rowH-10;
+    const lo=d.low, hi=d.high;
+    const mk=(v,cls,label)=>{ const x0=sx(0), x1=sx(v), w=Math.abs(x1-x0); if (w<0.5) return '';
+      const rx = Math.min(x0,x1);
+      return `<rect x="${rx}" y="${y}" width="${w}" height="${h}" rx="2" fill="var(--${cls})"><title>${esc(d.name)} ${label}: ${(v*unit>=0?'+':'')}${(v*unit).toFixed(3)} ${uname}</title></rect>`; };
+    g+=`<text class="nm" x="${L-10}" y="${y+h/2+4}" text-anchor="end">${esc(d.name)}</text>`;
+    g+=mk(lo,'lo','Min')+mk(hi,'hi','Max');
+    const far = Math.abs(hi)>=Math.abs(lo)?hi:lo;
+    const tx = sx(far)+(far>=0?6:-6);
+    g+=`<text x="${tx}" y="${y+h/2+4}" text-anchor="${far>=0?'start':'end'}">±${(d.swing*unit/2).toFixed(2)}</text>`;
+  });
+  g+=`<line class="axis" x1="${cx}" x2="${cx}" y1="${top-6}" y2="${H-bot+4}"/>`;
+  el.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="ノード ${esc(n)} のトルネードチャート">${g}</svg>`;
+  $('torNote').textContent = `ノード ${n} の Typ = ${f4(state.vTyp[n])} V からの変化。棒は部品を1つだけ Min または Max にしたときの電圧差、右端の数値は幅の半分です。`;
+  document.querySelectorAll('#tNodes tr.pick').forEach(tr=>tr.classList.toggle('sel', tr.dataset.n===n));
+}
+function niceStep(x){ const e=Math.pow(10,Math.floor(Math.log10(x))), f=x/e; return (f<=1?1:f<=2?2:f<=5?5:10)*e; }
+function trimNum(t){ return Math.abs(t)<1e-12?'0':String(parseFloat(t.toPrecision(6))); }
+
+function runMC(){
+  if (!state.solver && !runWorst()) return;
+  try {
+    const {solver, comps} = buildFromText($('net').value);
+    const runs = Math.max(10, Math.min(50000, parseInt($('runs').value,10)||2000));
+    const sv = $('seed').value.trim();
+    const seed = sv==='' ? null : parseInt(sv,10);
+    if (sv!=='' && isNaN(seed)){ showMsgs([['err','シードは整数で入力してください。']]); return; }
+    const dist = $('dist').value;
+    const t0=performance.now();
+    const samples = monteCarlo(solver, comps, runs, dist, seed);
+    const ms=Math.round(performance.now()-t0);
+    state.mc = {samples, runs, dist, seed, ms};
+    const nodes=Object.keys(samples).sort(natCmp);
+    $('mcChips').innerHTML = [`<span class="chip">試行 ${runs}</span>`,`<span class="chip">${dist==='gaussian'?'正規':'一様'}</span>`,`<span class="chip">シード ${seed==null?'なし':seed}</span>`,`<span class="chip">${ms} ms</span>`].join('');
+    const rows = nodes.map(n=>{ const s=stats(samples[n]); return `<tr class="pick" data-mn="${esc(n)}"><td>${esc(n)}</td><td class="m">${f4(s.mean)}</td><td class="m">${f4(s.sd)}</td><td class="m">${f4(s.mean-3*s.sd)}</td><td class="m">${f4(s.mean+3*s.sd)}</td></tr>`; });
+    table($('tMc'), ['ノード','平均 [V]','標準偏差','−3σ','+3σ'], rows);
+    // 選択肢は毎回作り直す(ネットリスト編集後に、もう存在しないノードが残らないように)
+    const cur=$('mcNode'), keep=cur.value;
+    cur.innerHTML = nodes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    cur.value = nodes.includes(keep) ? keep : nodes[0];
+    drawHist();
+    showMsgs(solver.validationIssues.length ? [['warn', solver.validationIssues.map(i=>`[${i.severity}] ${i.line?`行${i.line}: `:''}${i.message}`).join('\n')]] : []);
+    setTab('mc');
+  } catch(e){ showMsgs([['err', e instanceof NetlistError ? e.message : `モンテカルロに失敗しました: ${e.message}`]]); }
+}
+function stats(a){ let m=0; for (const v of a) m+=v; m/=a.length; let s=0; for (const v of a) s+=(v-m)*(v-m); return {mean:m, sd:Math.sqrt(s/a.length)}; }
+function drawHist(){
+  if (!state.mc) return;
+  const n=$('mcNode').value, data=state.mc.samples[n]; if(!data) return;
+  const {mean,sd}=stats(data);
+  let lo=Math.min(...data), hi=Math.max(...data);
+  if (hi-lo<1e-12){ lo-=1e-3; hi+=1e-3; }
+  const B=30, bw=(hi-lo)/B, cnt=new Array(B).fill(0);
+  for (const v of data) cnt[Math.min(B-1,Math.floor((v-lo)/bw))]++;
+  const dens = cnt.map(c=>c/data.length/bw);
+  const fit = x=>sd>0?Math.exp(-0.5*((x-mean)/sd)**2)/(sd*Math.sqrt(2*Math.PI)):0;
+  const ymax = Math.max(...dens, sd>0?fit(mean):0)*1.08;
+  const W=640,H=300,L=52,R=16,T=14,Bm=44, pw=W-L-R, ph=H-T-Bm;
+  const sx=v=>L+(v-lo)/(hi-lo)*pw, sy=v=>T+ph-(v/ymax)*ph;
+  let g='';
+  const ys=niceStep(ymax/4);
+  for (let t=0;t<=ymax;t+=ys) g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${sy(t)}" y2="${sy(t)}"/><text x="${L-6}" y="${sy(t)+4}" text-anchor="end">${trimNum(t)}</text>`;
+  const xs=niceStep((hi-lo)/5);
+  for (let t=Math.ceil(lo/xs)*xs; t<=hi+1e-12; t+=xs) g+=`<line class="axis" x1="${sx(t)}" x2="${sx(t)}" y1="${T+ph}" y2="${T+ph+4}"/><text x="${sx(t)}" y="${T+ph+18}" text-anchor="middle">${trimNum(t)}</text>`;
+  dens.forEach((d,i)=>{ const x=sx(lo+i*bw), w=Math.max(1,sx(lo+(i+1)*bw)-x-2);
+    if (cnt[i]) g+=`<rect x="${x+1}" y="${sy(d)}" width="${w}" height="${T+ph-sy(d)}" rx="2" fill="var(--bar)" opacity=".85"><title>${(lo+i*bw).toFixed(4)} – ${(lo+(i+1)*bw).toFixed(4)} V : ${cnt[i]} 回</title></rect>`; });
+  g+=`<line class="axis" x1="${L}" x2="${W-R}" y1="${T+ph}" y2="${T+ph}"/>`;
+  if (sd>0){ let p=''; for (let i=0;i<=80;i++){ const x=lo+(hi-lo)*i/80; p+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fit(x)).toFixed(1); }
+    g+=`<path d="${p}" fill="none" stroke="var(--fit)" stroke-width="2" stroke-dasharray="5 4"/>`; }
+  g+=`<line x1="${sx(mean)}" x2="${sx(mean)}" y1="${T}" y2="${T+ph}" stroke="var(--ink)" stroke-width="1.5"/>`;
+  g+=`<text x="${W/2}" y="${H-6}" text-anchor="middle">ノード ${esc(n)} の電圧 [V] / 縦軸: 確率密度</text>`;
+  $('mcChart').innerHTML = `<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--bar)"></i>シミュレーション</span><span><i style="background:var(--fit)"></i>正規近似</span><span><i style="background:var(--ink)"></i>平均 ${f4(mean)} V</span></div><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="ノード ${esc(n)} の電圧分布">${g}</svg>`;
+  document.querySelectorAll('#tMc tr.pick').forEach(tr=>tr.classList.toggle('sel', tr.dataset.mn===n));
+}
+
+// events
+(function init(){
+  $('preset').innerHTML = PRESETS.map((p,i)=>`<option value="${i}">${p[1]}</option>`).join('');
+  $('net').value = PRESETS[0][2];
+  $('ta').value = 85;
+  $('preset').addEventListener('change',e=>{ const p=PRESETS[+e.target.value]; $('net').value=p[2]; state.tornadoNode=null; setTab('wc'); runWorst(); });
+  $('btnRun').addEventListener('click',()=>{ setTab('wc'); runWorst(); });
+  $('btnMc').addEventListener('click',runMC);
+  $('tabs').addEventListener('click',e=>{ const b=e.target.closest('.tab'); if(b) setTab(b.dataset.t); });
+  $('tNodes').addEventListener('click',e=>{ const tr=e.target.closest('tr.pick'); if(!tr) return; state.tornadoNode=tr.dataset.n; drawTornado(); setTab('tor'); });
+  $('torNode').addEventListener('change',e=>{ state.tornadoNode=e.target.value; drawTornado(); });
+  $('mcNode').addEventListener('change',drawHist);
+  $('tMc').addEventListener('click',e=>{ const tr=e.target.closest('tr.pick'); if(!tr) return; $('mcNode').value=tr.dataset.mn; drawHist(); });
+  runWorst();
+})();
+</script>
+
+</body>
+</html>

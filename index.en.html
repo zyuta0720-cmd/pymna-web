@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyMNA Pro Web</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="alternate" hreflang="ja" href="index.html">
+<link rel="alternate" hreflang="en" href="index.en.html">
+<style>
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+
+/* Layout: editor pane (netlist + settings) on the left, result tabs on the right; stacked on narrow screens. */
+:root{
+  --bg:#f3f5f6; --panel:#ffffff; --panel2:#eaeff0; --ink:#17232b; --ink2:#4b5c66; --muted:#7a8a93;
+  --line:#d3dce0; --accent:#0b6e7f; --accent-ink:#ffffff;
+  --lo:#2b6cb0; --hi:#c2570c;           /* Min side / Max side */
+  --good:#1d7a45; --good-bg:#e0f2e7; --bad:#b3261e; --bad-bg:#fbe4e2; --warn:#8a5a00; --warn-bg:#fdf0d2;
+  --bar:#0b6e7f; --fit:#c2570c;
+  --font:"Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,"Courier New",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a20; --panel:#16252d; --panel2:#1d303a; --ink:#e4edf1; --ink2:#a9bac3; --muted:#7f929c;
+  --line:#2a3f4a; --accent:#4cc3d6; --accent-ink:#06222a;
+  --lo:#6aa7ee; --hi:#f0944f;
+  --good:#6bd49a; --good-bg:#16382a; --bad:#ff8a80; --bad-bg:#42201d; --warn:#f2c35c; --warn-bg:#3d3114;
+  --bar:#4cc3d6; --fit:#f0944f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a20; --panel:#16252d; --panel2:#1d303a; --ink:#e4edf1; --ink2:#a9bac3; --muted:#7f929c;
+  --line:#2a3f4a; --accent:#4cc3d6; --accent-ink:#06222a;
+  --lo:#6aa7ee; --hi:#f0944f;
+  --good:#6bd49a; --good-bg:#16382a; --bad:#ff8a80; --bad-bg:#42201d; --warn:#f2c35c; --warn-bg:#3d3114;
+  --bar:#4cc3d6; --fit:#f0944f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.55;
+  padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:.01em}
+h1 span{color:var(--accent)}
+header p{margin:0;color:var(--ink2);font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;min-width:0}
+.panel h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin:0}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.pb{padding:14px;display:flex;flex-direction:column;gap:12px}
+label{font-size:12px;color:var(--ink2)}
+select,input[type=number],input[type=text],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+textarea{font-family:var(--mono);font-size:12.5px;line-height:1.6;width:100%;min-height:290px;resize:vertical;white-space:pre;overflow:auto;tab-size:8}
+select{width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
+.field{display:flex;flex-direction:column;gap:3px;flex:1 1 90px;min-width:0}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
+button{font:inherit;font-weight:500;cursor:pointer;border-radius:4px;padding:7px 14px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.sub{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+fieldset{border:0;border-top:1px solid var(--line);margin:0;padding:12px 0 0;display:flex;flex-direction:column;gap:10px;min-width:0}
+legend{padding:0 6px 0 0;float:left;width:100%}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--ink2)}
+.tab[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.view[hidden]{display:none}
+.view{padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);color:var(--ink2);font-variant-numeric:tabular-nums}
+.chip.good{background:var(--good-bg);color:var(--good);border-color:transparent}
+.chip.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.04em;color:var(--ink2);font-weight:600;background:var(--panel2)}
+td.m{font-family:var(--mono);font-size:12.5px}
+tr:last-child td{border-bottom:0}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:var(--panel2)}
+tr.sel td{background:var(--panel2)}
+tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.st{display:inline-block;min-width:44px;text-align:center;border-radius:3px;padding:0 6px;font-size:12px;font-weight:600}
+.st.PASS{background:var(--good-bg);color:var(--good)}
+.st.FAIL{background:var(--bad-bg);color:var(--bad)}
+.note{font-size:12px;color:var(--ink2);margin:0}
+.msg{border-radius:4px;padding:10px 12px;font-size:13px;white-space:pre-wrap}
+.msg.err{background:var(--bad-bg);color:var(--bad)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--ink2);font-family:var(--font);font-size:11px}
+.chart .nm{fill:var(--ink);font-family:var(--mono);font-size:12px}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .axis{stroke:var(--muted);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.pre{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;margin:0;color:var(--ink)}
+.assign td:last-child{white-space:normal;text-align:left;font-family:var(--mono);font-size:12px}
+.assign td:nth-child(2){text-align:left}
+footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.hint{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+details summary{cursor:pointer;color:var(--ink2);font-size:12px}
+details pre{font-size:12px;color:var(--ink2);white-space:pre-wrap;margin:8px 0 0;font-family:var(--mono)}
+.lang{margin-left:auto;font-size:13px;color:var(--ink2)}
+.lang a{color:var(--accent);text-decoration:none;font-weight:600}
+.lang a:hover{text-decoration:underline}
+.lang b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PyMNA <span>Pro</span> Web</h1>
+    <p>DC operating-point analysis with component tolerances: worst case / tornado / Monte Carlo / resistor power check</p>
+    <nav class="lang" aria-label="Language"><a href="index.html" hreflang="ja" lang="ja">日本語</a> / <b>English</b></nav>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Input">
+      <div class="ph"><h2>Netlist</h2><span class="sub">DC</span></div>
+      <div class="pb">
+        <div class="field">
+          <label for="preset">Preset circuit</label>
+          <select id="preset"></select>
+        </div>
+        <textarea id="net" spellcheck="false" aria-label="Netlist"></textarea>
+        <div class="hint">
+          <p class="note">Type Name N+ N- Value [Tol%] / at the end of a resistor line: <span style="font-family:var(--mono)">; @P=0.125W @T_S=70 @T_M=155</span></p>
+        </div>
+        <fieldset>
+          <legend class="sub">Analysis settings</legend>
+          <label class="chk"><input type="checkbox" id="iter" checked> Enable iterative refinement</label>
+          <div class="row">
+            <div class="field"><label for="ta">Ambient temp Ta [°C]</label><input type="number" id="ta" value="25" step="1"></div>
+            <div class="field"><label for="runs">MC runs</label><input type="number" id="runs" value="2000" min="10" max="50000" step="100"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="seed">Seed (blank = random)</label><input type="text" id="seed" value="42" inputmode="numeric"></div>
+            <div class="field"><label for="dist">Distribution</label>
+              <select id="dist"><option value="gaussian">Gaussian (±3σ)</option><option value="uniform">Uniform</option></select></div>
+          </div>
+        </fieldset>
+        <div class="actions">
+          <button class="primary" id="btnRun">▶ Worst-case analysis</button>
+          <button id="btnMc">Monte Carlo</button>
+        </div>
+        <details>
+          <summary>Input guide</summary>
+          <pre>R  Name N+ N- Value [Tol% or Min/Max]   e.g. R R1 1 0 1k 1 / R R2 1 0 1k 0.9k/1.1k
+   Tolerance 5 and 5% mean the same (±5%)
+V  Name N+ N- Value [Tol%]              e.g. V V1 1 0 12V 5
+I  Name N+ N- Value [Tol%]              e.g. I I1 1 0 1mA
+E  Name N+ N- NC+ NC- Gain   (VCVS)     e.g. E OP1 3 0 1 2 100k
+F  Name N+ N- CtrlVName Gain [Tol]  (CCCS)
+G  Name N+ N- NC+ NC- gm [Tol]      (VCCS)
+H  Name N+ N- CtrlVName Rm [Tol]    (CCVS)
+C  open at DC / L  short at DC / D  ignored at DC
+Resistor power rating: in the line comment, @P=0.125W, @P=125mW or @P=1/8W
+Node 0 is GND. Lines starting with ; or * are comments.
+Units: f p n u m k meg g t (case-insensitive, M = milli)
+Also accepted: 1e3, R-notation 4k7, trailing units 12V 1mA 47kΩ</pre>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Results">
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-t="wc" aria-selected="true">Worst case</button>
+        <button class="tab" role="tab" data-t="tor" aria-selected="false">Tornado</button>
+        <button class="tab" role="tab" data-t="mc" aria-selected="false">Monte Carlo</button>
+        <button class="tab" role="tab" data-t="asg" aria-selected="false">Worst combos</button>
+      </div>
+      <div id="msgs" style="padding:14px 14px 0;display:flex;flex-direction:column;gap:8px" hidden></div>
+
+      <div class="view" id="v-wc">
+        <div class="chips" id="chips"></div>
+        <div>
+          <div class="sub" style="margin-bottom:6px">Node voltages</div>
+          <div class="tw"><table id="tNodes"></table></div>
+          <p class="note" style="margin-top:6px">Click a row to show the tornado chart for that node.</p>
+        </div>
+        <div>
+          <div class="sub" style="margin-bottom:6px" id="pHead">Resistor power dissipation</div>
+          <div class="tw"><table id="tPower"></table></div>
+        </div>
+      </div>
+
+      <div class="view" id="v-tor" hidden>
+        <div class="row"><div class="field" style="max-width:220px"><label for="torNode">Node</label><select id="torNode"></select></div></div>
+        <div class="legend"><span><i style="background:var(--lo)"></i>Component at Min</span><span><i style="background:var(--hi)"></i>Component at Max</span></div>
+        <div id="torChart"></div>
+        <p class="note" id="torNote"></p>
+      </div>
+
+      <div class="view" id="v-mc" hidden>
+        <div class="chips" id="mcChips"></div>
+        <div class="row"><div class="field" style="max-width:220px"><label for="mcNode">Node to plot</label><select id="mcNode"></select></div></div>
+        <div id="mcChart"></div>
+        <div class="tw"><table id="tMc"></table></div>
+        <p class="note">Std. dev. is the population value (ddof=0); ±3σ = mean ± 3 × std. dev. In Gaussian mode, Min–Max is treated as ±3σ and samples are clipped to that range.</p>
+      </div>
+
+      <div class="view" id="v-asg" hidden>
+        <p class="note">Component combinations that drive each node voltage to its maximum / minimum (components at typ are omitted).</p>
+        <div class="tw"><table class="assign" id="tAsg"></table></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span>© 2026 Zyutama / MIT License (full text below). The web edition contains only the DC analysis core; transient analysis, schematic generation and LTspice export are not included.</span>
+    <span>Your netlist is never sent anywhere. All calculations run locally in your browser.</span>
+    <span>Results are for reference only. Verify final design decisions by other means. The Monte Carlo random sequence differs from the desktop edition (NumPy), so the same seed will not give identical values.</span>
+    <span>Worst-case limitation: instead of an exhaustive search, the worst combination is found from the sign of each component's sensitivity plus iterative flipping. In circuits where a voltage is not monotonic in a component value, the true worst case may be missed.</span>
+    <span>Power-check limitation: Max power is evaluated only over the combinations that maximize / minimize each node voltage. For a resistor with neither end at GND, the combination that maximizes its terminal voltage may not be included, so the result can be underestimated (PASS may be optimistic). Verify resistors with small margins separately.</span>
+    <details>
+      <summary>MIT License (full text)</summary>
+      <pre>MIT License
+
+Copyright (c) 2026 Zyutama
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+    </details>
+  </footer>
+</div>
+
+<script>
+// ===== core: solver_core / netlist_validator / analysis_suite (JS port) =====
+const SI = {f:1e-15,p:1e-12,n:1e-9,u:1e-6,'µ':1e-6,'μ':1e-6,m:1e-3,k:1e3,g:1e9,t:1e12,r:1};
+const UNIT_WORDS = new Set(['v','a','f','h','s','w','hz','ohm','ω','ohms','sec','var','ah','wh']);
+const VALUE_RE = /^\s*([+-]?)(\d*\.?\d+)\s*([a-zµμΩ]+)(\d*)\s*$/i;
+const FLOAT_RE = /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/;
+const NODEF = Symbol('raise');
+// G_ZERO_R: fallback for a resistor whose nominal value is non-zero but becomes 0 during analysis (e.g. the min side of a 0/1k range).
+const G_ZERO_R = 1e12, COND_WARN = 1e13, RESIDUAL_WARN = 1e-6;
+
+class NetlistError extends Error {
+  constructor(issues){
+    const errs = issues.filter(i=>i.severity==='ERROR');
+    const body = errs.length ? errs.map(i=>`  - ${i.line?`line ${i.line}: `:''}${i.message}`).join('\n') : '  - (no details)';
+    super('The netlist has errors:\n'+body);
+    this.issues = issues;
+  }
+}
+function scaleOf(alpha){
+  const a = alpha.toLowerCase();
+  if (a.startsWith('meg')) return [1e6,3];
+  if (a && Object.prototype.hasOwnProperty.call(SI,a[0])) return [SI[a[0]],1];
+  return [1,0];
+}
+function parseValue(v, def=NODEF){
+  const s = (v==null?'':String(v)).trim();
+  if (s===''||s==='-'||s.toLowerCase()==='none') return 0;
+  if (FLOAT_RE.test(s)) return Number(s);
+  const m = VALUE_RE.exec(s);
+  if (m){
+    const [,sign,ip,alpha,frac] = m;
+    const [scale,used] = scaleOf(alpha);
+    const rest = alpha.slice(used).toLowerCase();
+    if (used===0 && !UNIT_WORDS.has(rest)) {}
+    else if (frac && used===0) {}
+    else {
+      let num = parseFloat(ip);
+      if (frac) num += parseInt(frac,10)/Math.pow(10,frac.length);
+      const r = num*scale;
+      return sign==='-' ? -r : r;
+    }
+  }
+  if (def!==NODEF) return def;
+  throw new Error(`Cannot parse as a number: '${v}'`);
+}
+function applyTol(base, tolField){
+  if (tolField==null || String(tolField).trim()==='') return [base,base];
+  const tol = String(tolField).trim();
+  let lo, hi;
+  if (tol.includes('/')){ const p=tol.split('/'); lo=parseValue(p[0]); hi=parseValue(p[1]); }
+  else {
+    const t = parseValue(tol.endsWith('%') ? tol.slice(0,-1) : tol);   // both '5' and '5%' accepted
+    lo = base*(1-t/100); hi = base*(1+t/100);
+  }
+  // For negative values (e.g. -5V ±5%) lo/hi are swapped, so always enforce min <= max.
+  // Otherwise Gaussian Monte Carlo sticks to one end of the range and shows zero spread.
+  return lo<=hi ? [lo,hi] : [hi,lo];
+}
+function pulseV1(raw){
+  const m = /^\s*PULSE\s*\((.*)\)\s*$/i.exec(String(raw||'').trim());
+  if (!m) return null;
+  const parts = m[1].split(',').map(x=>x.trim()).filter(x=>x!=='');
+  return parseValue(parts.length?parts[0]:'0');
+}
+function parseFields(row){
+  try { return parseFieldsImpl(row); }
+  catch(e){ throw new Error(`${row.length>1?row[1]:'?'} — invalid value: ${e.message}`); }
+}
+function parseFieldsImpl(row){
+  const t = row[0].toUpperCase();
+  let val=0, raw='0', vmin=0, vmax=0;
+  const at = i => row.length>i ? row[i] : null;
+  if ('RVICL'.includes(t) && t.length===1){
+    raw = at(4)!=null ? row[4] : '0';
+    const pv = (t==='V'||t==='I') ? pulseV1(raw) : null;
+    if (pv!==null){ val=pv; vmin=vmax=val; }
+    else {
+      val = parseValue(raw);
+      const tf = (at(5)!=null && !String(row[5]).toUpperCase().startsWith('IC=')) ? row[5] : null;
+      [vmin,vmax] = applyTol(val,tf);
+    }
+  } else if (t==='E'){
+    raw = at(6)!=null ? row[6] : (at(4)!=null ? row[4] : '0'); val = parseValue(raw); vmin=vmax=val;
+  } else if (t==='F' || t==='H'){
+    raw = at(5)!=null ? row[5] : '0'; val = parseValue(raw); [vmin,vmax]=applyTol(val, at(6));
+  } else if (t==='G'){
+    raw = at(6)!=null ? row[6] : (at(4)!=null ? row[4] : '0'); val = parseValue(raw); [vmin,vmax]=applyTol(val, at(7));
+  } else if (t==='D'){
+    raw = (at(4)!=null && String(row[4]).trim()) ? row[4] : '0.6'; val = parseValue(raw); vmin=vmax=val;
+  }
+  return [val,raw,vmin,vmax];
+}
+function findFloating(rows, pathTypes=['R','V','E','H','L']){
+  const adj = new Map(), nodes = new Set();
+  const add=(a,b)=>{ if(!adj.has(a)) adj.set(a,new Set()); adj.get(a).add(b); };
+  for (const row of rows){
+    if (row.length<4) continue;
+    const t=row[0].toUpperCase(), n1=String(row[2]), n2=String(row[3]);
+    nodes.add(n1); nodes.add(n2);
+    if ((t==='E'||t==='G') && row.length>=6){ nodes.add(String(row[4])); nodes.add(String(row[5])); }
+    if (pathTypes.includes(t)){ add(n1,n2); add(n2,n1); }
+  }
+  nodes.delete('0');
+  const seen = new Set(['0']), st=['0'];
+  while(st.length){ const c=st.pop(); for (const nb of (adj.get(c)||[])) if(!seen.has(nb)){seen.add(nb);st.push(nb);} }
+  return [...nodes].filter(n=>!seen.has(n)).sort();
+}
+const MIN_COLS = {R:5,V:5,I:5,C:5,L:5,D:4,E:7,F:6,G:7,H:6};
+function validate(rows, lineNos){     // lineNos: editor line number of each row (sequential if omitted)
+  const issues=[], push=(severity,line,code,message)=>issues.push({severity,line,code,message});
+  const names = new Map(), allNodes = new Set(), vnames = new Set();
+  const lineOf = idx => (lineNos && lineNos.length===rows.length) ? lineNos[idx] : idx+1;
+  rows.forEach((row,idx)=>{
+    const ln=lineOf(idx);
+    if (row.length<2){ push('ERROR',ln,'row_too_short',`Too few fields: ${row.join(' ')||'(empty line)'}`); return; }
+    const t=row[0].toUpperCase(), name=row[1];
+    if (!(t in MIN_COLS)){ push('ERROR',ln,'unknown_type',`Unknown element type '${row[0]}'`); return; }
+    if (row.length<MIN_COLS[t]){ push('ERROR',ln,'missing_fields',`${t} ${name}: missing fields (${MIN_COLS[t]} required, got ${row.length})`); return; }
+    if (names.has(name)) push('ERROR',ln,'dup_name',`Duplicate component name '${name}' (also on line ${names.get(name)})`);
+    else names.set(name,ln);
+    try { parseFields(row); } catch(e){ push('ERROR',ln,'bad_value',e.message); }
+    const n1=String(row[2]), n2=String(row[3]);
+    allNodes.add(n1); allNodes.add(n2);
+    if (n1===n2) push('WARNING',ln,'self_loop',`${t} ${name}: both ends are on node '${n1}' (element ignored)`);
+    if (t==='E'||t==='G'){ allNodes.add(String(row[4])); allNodes.add(String(row[5])); }
+    if ('VEH'.includes(t)) vnames.add(name);
+    if (t==='R'){ const v=parseValue(row[4],null); if (v===0) push('WARNING',ln,'zero_ohm',`R ${name}: resistance is 0 (${n1}-${n2} is shorted)`); }
+  });
+  const hasG = allNodes.has('0');
+  if (!hasG) push('ERROR',null,'no_ground',"Reference node '0' (GND) is not connected anywhere");
+  rows.forEach((row,idx)=>{
+    if (row.length<5) return;
+    const t=row[0].toUpperCase();
+    if ((t==='F'||t==='H') && !vnames.has(row[4])) push('ERROR',lineOf(idx),'bad_ctrl_src',`${t} ${row[1]}: controlling voltage source '${row[4]}' not found (specify the name of a V/E/H element)`);
+  });
+  if (hasG) for (const nn of findFloating(rows)) push('ERROR',null,'floating_node',`Node '${nn}' has no DC path to GND (via R/V/E/H/L). Check for a missing resistor.`);
+  const par = new Map();
+  const find = x=>{ if(!par.has(x)) par.set(x,x); let r=x; while(par.get(r)!==r) r=par.get(r); while(par.get(x)!==r){const nx=par.get(x);par.set(x,r);x=nx;} return r; };
+  for (const row of rows){
+    if (row.length<4) continue;
+    const t=row[0].toUpperCase();
+    let short = 'VEH'.includes(t) && t.length===1;
+    if (t==='R') short = row.length>4 && parseValue(row[4],1)===0;
+    if (!short) continue;
+    const a=find(String(row[2])), b=find(String(row[3]));
+    if (a===b) push('ERROR',null,'vsource_loop',`Loop of voltage sources only (short circuit) between nodes '${row[2]}' and '${row[3]}'`);
+    else par.set(a,b);
+  }
+  return issues;
+}
+
+function gaussSolve(A, Z){            // Gaussian elimination with partial pivoting. A and Z are overwritten.
+  const n=Z.length;
+  for (let c=0;c<n;c++){
+    let p=c, mx=Math.abs(A[c][c]);
+    for (let r=c+1;r<n;r++){ const v=Math.abs(A[r][c]); if (v>mx){mx=v;p=r;} }
+    if (mx<1e-24) throw new NetlistError([{severity:'ERROR',line:null,code:'singular_matrix',
+      message:'The MNA matrix is singular. Likely causes: a floating section, a voltage-source loop, or inconsistent dependent sources.'}]);
+    if (p!==c){ [A[p],A[c]]=[A[c],A[p]]; [Z[p],Z[c]]=[Z[c],Z[p]]; }
+    const piv=A[c][c];
+    for (let r=c+1;r<n;r++){
+      const f=A[r][c]/piv; if (f===0) continue;
+      const Ar=A[r], Ac=A[c];
+      for (let k=c;k<n;k++) Ar[k]-=f*Ac[k];
+      Z[r]-=f*Z[c];
+    }
+  }
+  const x=new Array(n);
+  for (let r=n-1;r>=0;r--){ let s=Z[r]; for (let k=r+1;k<n;k++) s-=A[r][k]*x[k]; x[r]=s/A[r][r]; }
+  return x;
+}
+function norm1(A){ let m=0; for (let j=0;j<A.length;j++){ let s=0; for (let i=0;i<A.length;i++) s+=Math.abs(A[i][j]); m=Math.max(m,s);} return m; }
+function inverse(A){
+  const n=A.length, cols=[];
+  for (let j=0;j<n;j++){ const e=new Array(n).fill(0); e[j]=1; cols.push(gaussSolve(A.map(r=>r.slice()),e)); }
+  return Array.from({length:n},(_,i)=>cols.map(c=>c[i]));
+}
+
+class MNASolver {
+  constructor(netlist, lineNos){
+    this.netlist = netlist;
+    const issues = validate(netlist, lineNos);
+    if (issues.some(i=>i.severity==='ERROR')) throw new NetlistError(issues);
+    this.validationIssues = issues.filter(i=>i.severity!=='ERROR');
+    this.lastDiag = null;
+    const nodes = new Set();
+    for (const row of netlist){
+      if (row.length<4) continue;
+      nodes.add(String(row[2])); nodes.add(String(row[3]));
+      const t=row[0].toUpperCase();
+      if ((t==='E'||t==='G') && row.length>=6){ nodes.add(String(row[4])); nodes.add(String(row[5])); }
+    }
+    nodes.delete('0');
+    // 0-ohm resistors and inductors (shorts at DC) are handled exactly by merging both nodes into one unknown.
+    // Approximating them with huge conductances (1e12 S / 1e9 S) caused errors of several percent from
+    // floating-point cancellation (e.g. a 1k/2k divider through a 0-ohm jumper gave 3.4133V instead of 3.3333V).
+    // nodeMap values are matrix indices: shorted nodes share an index, nodes shorted to GND are -1.
+    this.shortRows = new Set(netlist.filter(r=>r.length>=4 &&
+      (r[0].toUpperCase()==='L' || (r[0].toUpperCase()==='R' && parseValue(r[4],null)===0))));
+    const par = new Map();
+    const find = x=>{ if(!par.has(x)) par.set(x,x); let r=x; while(par.get(r)!==r) r=par.get(r); while(par.get(x)!==r){const nx=par.get(x);par.set(x,r);x=nx;} return r; };
+    for (const r of this.shortRows){ const a=find(String(r[2])), b=find(String(r[3])); if (a!==b) par.set(a,b); }
+    const gnd = find('0'), rootIdx = new Map();
+    this.nodeMap = {};
+    [...nodes].sort().forEach(n=>{
+      const root = find(n);
+      if (root===gnd) this.nodeMap[n] = -1;
+      else { if (!rootIdx.has(root)) rootIdx.set(root, rootIdx.size); this.nodeMap[n] = rootIdx.get(root); }
+    });
+    this.numN = rootIdx.size;
+    this.vSources = netlist.filter(r=>'VEH'.includes(r[0].toUpperCase()));
+    this.vMap = {}; this.vSources.forEach((r,i)=>{ this.vMap[r[1]]=i; });
+    this.dim = this.numN + this.vSources.length;
+  }
+  build(params){
+    const n=this.dim, A=Array.from({length:n},()=>new Array(n).fill(0)), Z=new Array(n).fill(0);
+    const idx = s=>{ const v=this.nodeMap[String(s)]; return v===undefined?-1:v; };
+    for (const row of this.netlist){
+      if (this.shortRows.has(row)) continue;   // 0-ohm resistors / inductors: already handled by node merging
+      const t=row[0].toUpperCase(), name=row[1];
+      const val = params[name]===undefined ? 0 : params[name];
+      const p=idx(row[2]), q=idx(row[3]);
+      const stampG=(g)=>{ if(p!==-1)A[p][p]+=g; if(q!==-1)A[q][q]+=g; if(p!==-1&&q!==-1){A[p][q]-=g;A[q][p]-=g;} };
+      const vs=()=>{ const v=this.numN+this.vMap[name]; if(p!==-1){A[p][v]+=1;A[v][p]+=1;} if(q!==-1){A[q][v]-=1;A[v][q]-=1;} return v; };
+      if (t==='R') stampG(val!==0 ? 1/val : G_ZERO_R);
+      else if (t==='I'){ if(p!==-1)Z[p]-=val; if(q!==-1)Z[q]+=val; }
+      else if (t==='V'){ const v=vs(); Z[v]=val; }
+      else if (t==='E'){ const v=vs(); const a=idx(row[4]), b=idx(row[5]); if(a!==-1)A[v][a]-=val; if(b!==-1)A[v][b]+=val; }
+      else if (t==='F'){ const c=this.numN+this.vMap[row[4]]; if(p!==-1)A[p][c]+=val; if(q!==-1)A[q][c]-=val; }
+      else if (t==='G'){ const a=idx(row[4]), b=idx(row[5]);
+        if(p!==-1&&a!==-1)A[p][a]-=val; if(p!==-1&&b!==-1)A[p][b]+=val;
+        if(q!==-1&&a!==-1)A[q][a]+=val; if(q!==-1&&b!==-1)A[q][b]-=val; }
+      else if (t==='H'){ const v=vs(); const c=this.numN+this.vMap[row[4]]; A[v][c]-=val; }
+    }
+    return [A,Z];
+  }
+  solve(params, diag=false){
+    const [A,Z]=this.build(params);
+    const A0 = diag ? A.map(r=>r.slice()) : null, Z0 = diag ? Z.slice() : null;
+    const x = gaussSolve(A,Z);
+    if (diag){
+      let cond=Infinity; try { cond = norm1(A0)*norm1(inverse(A0)); } catch(e){}
+      let rn=0, zn=0;
+      for (let i=0;i<this.dim;i++){ let s=-Z0[i]; for (let j=0;j<this.dim;j++) s+=A0[i][j]*x[j]; rn+=s*s; zn+=Z0[i]*Z0[i]; }
+      this.lastDiag = {cond, residual: Math.sqrt(rn)/(Math.sqrt(zn)+1e-30), dim:this.dim};
+    }
+    const volts={'0':0};
+    for (const n in this.nodeMap){ const i=this.nodeMap[n]; volts[n] = i===-1 ? 0 : x[i]; }
+    return volts;
+  }
+}
+
+const natKey = s=>String(s).split(/(\d+)/).map(t=>/^\d+$/.test(t)?parseInt(t,10):t.toLowerCase());
+function natCmp(a,b){
+  const x=natKey(a), y=natKey(b);
+  for (let i=0;i<Math.min(x.length,y.length);i++){
+    if (x[i]===y[i]) continue;
+    if (typeof x[i]===typeof y[i]) return x[i]<y[i]?-1:1;
+    return typeof x[i]==='number'?-1:1;
+  }
+  return x.length-y.length;
+}
+function derated(rp, T, ts, tm){
+  if (rp==null) return null;
+  ts = ts!=null?ts:70; tm = tm!=null?tm:155;
+  if (T<=ts) return rp; if (T>=tm) return 0;
+  return Math.max(0, rp*(1-(T-ts)/(tm-ts)));
+}
+function fmtP(v){
+  if (v==null) return '-';
+  const a=Math.abs(v);
+  if (a>=1) return v.toFixed(3)+' W';
+  if (a>=1e-3) return (v*1e3).toFixed(3)+' mW';
+  if (a>=1e-6) return (v*1e6).toFixed(3)+' uW';
+  return v.toExponential(3).replace(/e([+-])(\d)$/,'e$10$2')+' W';
+}
+function worstCase(solver, comps, iterative){
+  const names = Object.keys(comps);
+  const typ = {}; for (const n of names) typ[n]=comps[n].typ;
+  const vTyp = solver.solve(typ, true);
+  const scenarios = [[typ, vTyp]];
+  const vmin={}, vmax={}, asg=[];
+  const pick = (states)=>{ const p={}; for (const k of names) p[k] = states[k]==='max'?comps[k].max:(states[k]==='min'?comps[k].min:comps[k].typ); return p; };
+  for (const target of Object.keys(solver.nodeMap).sort(natCmp)){
+    const maxS={}, minS={};
+    for (const n of names){
+      const d=comps[n];
+      if (d.min===d.max){ maxS[n]=minS[n]='typ'; continue; }
+      const tp={...typ}; tp[n]=d.max;
+      if (solver.solve(tp)[target] > vTyp[target]){ maxS[n]='max'; minS[n]='min'; }
+      else { maxS[n]='min'; minS[n]='max'; }
+    }
+    if (iterative){
+      for (const [states,mode] of [[maxS,'max'],[minS,'min']]){
+        for (let it=0; it<15; it++){
+          let changed=false;
+          for (const n of names){
+            if (comps[n].min===comps[n].max) continue;
+            const base = solver.solve(pick(states))[target];
+            const old = states[n];
+            states[n] = old==='max'?'min':'max';
+            const trial = solver.solve(pick(states))[target];
+            if ((mode==='max' && trial>base) || (mode==='min' && trial<base)) changed=true;
+            else states[n]=old;
+          }
+          if (!changed) break;
+        }
+      }
+    }
+    const pMax=pick(maxS), vMaxD=solver.solve(pMax);
+    const pMin=pick(minS), vMinD=solver.solve(pMin);
+    vmax[target]=vMaxD[target]; vmin[target]=vMinD[target];
+    scenarios.push([pMax,vMaxD],[pMin,vMinD]);
+    const lst = s=>Object.keys(s).filter(k=>s[k]!=='typ').map(k=>`${k}:${s[k]}`).join(', ');
+    asg.push([`Node ${target} (To MAX)`, lst(maxS)], [`Node ${target} (To MIN)`, lst(minS)]);
+  }
+  return {vTyp, vmin, vmax, scenarios, asg};
+}
+function powerRows(vTyp, scenarios, comps, Ta){
+  const rows=[];
+  for (const r of Object.values(comps).filter(c=>c.type==='R')){
+    const dv = Math.abs((vTyp[r.nPos]||0)-(vTyp[r.nNeg]||0));
+    // A 0-ohm jumper dissipates P = I²R = 0. Dividing directly gives Infinity/NaN and a false FAIL when a rating is set.
+    const typP = r.typ>0 ? dv*dv/r.typ : 0;
+    let maxP=0;
+    for (const [,v] of scenarios){
+      const d=Math.abs((v[r.nPos]||0)-(v[r.nNeg]||0));
+      const p = r.min>0 ? d*d/r.min : 0; if (p>maxP) maxP=p;   // conservative: always divide by the minimum resistance
+    }
+    const lim = derated(r.ratedPower, Ta, r.tS, r.tM);
+    let load='-', status='-';
+    if (r.ratedPower){
+      if (lim>0){ load=(maxP/lim*100).toFixed(2)+'%'; status = maxP>lim?'FAIL':'PASS'; }
+      else { load = maxP>0?'Inf%':'0.00%'; status = maxP>0?'FAIL':'PASS'; }
+    }
+    rows.push({name:r.name, typ:fmtP(typP), max:fmtP(maxP), rated:fmtP(r.ratedPower), lim:fmtP(lim), load, status});
+  }
+  return rows;
+}
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function monteCarlo(solver, comps, runs, dist, seed){
+  const rnd = seed==null ? Math.random : mulberry32(seed);
+  const gauss = ()=>{ let u=0; while(u===0) u=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd()); };
+  const names=Object.keys(comps), samples={};
+  for (let i=0;i<runs;i++){
+    const p={};
+    for (const n of names){
+      const d=comps[n];
+      if (d.min===d.max) p[n]=d.typ;
+      else if (dist==='gaussian') p[n]=Math.min(d.max,Math.max(d.min, d.typ+gauss()*(d.max-d.min)/6));
+      else p[n]=d.min+rnd()*(d.max-d.min);
+    }
+    const v=solver.solve(p);
+    for (const k in v){ if (k==='0') continue; (samples[k]||(samples[k]=[])).push(v[k]); }
+  }
+  return samples;
+}
+function sensitivity(solver, vTyp, comps, target){
+  const typ={}; for (const n in comps) typ[n]=comps[n].typ;
+  const base=vTyp[target], out=[];
+  for (const n in comps){
+    const d=comps[n]; if (d.min===d.max) continue;
+    const lo=solver.solve({...typ,[n]:d.min})[target], hi=solver.solve({...typ,[n]:d.max})[target];
+    out.push({name:n, low:lo-base, high:hi-base, swing:Math.abs(hi-lo)});
+  }
+  return out.sort((a,b)=>b.swing-a.swing);
+}
+function buildFromText(text){
+  const raw=text.split('\n'), rows=[], lineMap=[], cmts=[];
+  raw.forEach((l,i)=>{
+    let s=l.trim(); if(!s||s[0]===';'||s[0]==='*') return;
+    let c=''; const k=s.indexOf(';'); if(k>=0){ c=s.slice(k+1); s=s.slice(0,k).trim(); }
+    if(!s) return;
+    rows.push(s.split(/\s+/)); lineMap.push(i+1); cmts.push(c);
+  });
+  if (!rows.length) throw new NetlistError([{severity:'ERROR',line:null,message:'The netlist is empty'}]);
+  // Pass line numbers to the validator (renumbering afterwards would leave stale numbers inside messages such as "also on line N")
+  const solver = new MNASolver(rows, lineMap);
+  const comps={};
+  rows.forEach((row,i)=>{
+    const t=row[0].toUpperCase(), name=row[1];
+    const [val,rawv,vmin,vmax]=parseFields(row);
+    let rp=null, ts=null, tm=null;
+    if (t==='R' && cmts[i]){
+      const pm=/@P=([\d.]+)(?:\/([\d.]+))?([a-zA-Z]+)?/i.exec(cmts[i]);   // 0.125W / 125mW / 1/8W
+      if(pm){ rp=parseValue(pm[1]+(pm[3]||'')); const den=pm[2]?parseFloat(pm[2]):1; if(den>0) rp/=den; }
+      const a=/@T_S=([\d.]+)/i.exec(cmts[i]); if(a) ts=parseFloat(a[1]);
+      const b=/@T_M=([\d.]+)/i.exec(cmts[i]); if(b) tm=parseFloat(b[1]);
+    }
+    comps[name]={typ:val,min:vmin,max:vmax,type:t,raw:rawv,name,nPos:String(row[2]),nNeg:String(row[3]),ratedPower:rp,tS:ts,tM:tm};
+  });
+  return {solver, comps};
+}
+// ===== /core =====
+
+// ===== UI =====
+const PRESETS = [
+  ['power','Power check demo (divider + @P tags)',"V\tVin\t1\t0\t12\t5\nR\tR1\t1\t2\t100\t1\t; @P=0.125W @T_S=70 @T_M=155\nR\tR2\t2\t0\t220\t1\t; @P=0.25W @T_S=70 @T_M=155\nR\tR3\t2\t3\t1k\t5\t; @P=0.1W\nR\tR4\t3\t0\t4.7k\t5\t; @P=0.1W"],
+  ['div','R-2R ladder',"V\tVin\t1\t0\t10\nR\tR1\t1\t2\t1k\t1\nR\tR2\t1\t0\t2k\t1\nR\tR3\t2\t3\t1k\t1\nR\tR4\t2\t0\t2k\t1\nR\tR5\t3\t4\t1k\t1\nR\tR6\t3\t0\t2k\t1\nR\tR7\t4\t5\t1k\t1\nR\tR8\t4\t0\t2k\t1\nR\tR9\t5\t0\t1k\t1"],
+  ['super','Superposition',"V\tV1\t1\t0\t10\nI\tI1\t2\t0\t1m\nR\tR1\t1\t3\t1k\t5\nR\tR2\t2\t3\t2k\t5\nR\tR3\t3\t0\t2k\t5"],
+  ['inv','Inverting amplifier',"V\tVin\t1\t0\t1\nR\tRin\t1\t2\t10k\t1\nR\tRf\t2\t3\t100k\t1\nE\tOP1\t3\t0\t0\t2\t100k"],
+  ['noninv','Non-inverting amplifier',"V\tVin\t1\t0\t1\nR\tR1\t3\t2\t90k\t1\nR\tR2\t2\t0\t10k\t1\nE\tOP1\t3\t0\t1\t2\t100k"],
+  ['hsd','HSD current monitor',"V\tV1\t1\t0\t12\nV\tV_sense\t1\t2\t0\nR\tR_load\t2\t0\t12\t10\nF\tF_mirror\t0\t3\tV_sense\t0.001\nR\tR_monitor\t3\t0\t1k"],
+  ['bridge','Complex bridge (4 sources + 8 resistors)',"V\tVcc\t1\t0\t12\t1\nV\tVsub\t0\t5\t5\t2\nI\tIsrc\t0\t4\t10m\t5\nI\tIinj\t1\t2\t5m\t1\nR\tRa\t1\t2\t1k\t5\nR\tRb\t2\t0\t1.2k\t5\nR\tRc\t1\t3\t1.5k\t5\nR\tRd\t3\t4\t1k\t5\nR\tRmid\t2\t3\t470\t5\nR\tRe\t4\t0\t2.2k\t5\nR\tRf\t2\t5\t3.3k\t5\nR\tRg\t3\t5\t4.7k\t5"],
+  ['e','Element demo: E (VCVS)',"V\tVin\t1\t0\t2\nE\tE1\t2\t0\t1\t0\t5\nR\tRL\t2\t0\t1k"],
+  ['f','Element demo: F (CCCS)',"V\tVin\t1\t0\t5\nR\tRsense\t1\t0\t1k\nF\tF1\t2\t0\tVin\t2\nR\tRL\t2\t0\t1k"],
+  ['g','Element demo: G (VCCS)',"V\tVin\t1\t0\t2\nR\tRin\t1\t0\t1k\nG\tG1\t2\t0\t1\t0\t2m\nR\tRL\t2\t0\t1k"],
+  ['h','Element demo: H (CCVS)',"V\tVin\t1\t0\t5\nR\tRsense\t1\t0\t1k\nH\tH1\t0\t2\tVin\t500\nR\tRL\t2\t0\t1k"],
+  ['cl','DC approximation: C = open / L = short',"V\tVin\t1\t0\t10\nR\tR1\t1\t2\t1k\nC\tC1\t2\t0\t1u\nR\tR2\t1\t3\t1k\nL\tL1\t3\t0\t10m"],
+];
+const $ = id=>document.getElementById(id);
+const state = {solver:null, comps:null, vTyp:null, wc:null, mc:null, tornadoNode:null};
+const f4 = v=>(Object.is(v,-0)?0:v).toFixed(4);
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function showMsgs(list){
+  const box=$('msgs'); box.innerHTML='';
+  list.forEach(([cls,text])=>{ const d=document.createElement('div'); d.className='msg '+cls; d.textContent=text; box.appendChild(d); });
+  box.hidden = !list.length;
+}
+function setTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.t===t)));
+  for (const k of ['wc','tor','mc','asg']) $('v-'+k).hidden = k!==t;
+}
+function table(el, head, rows, opts={}){
+  const th='<tr>'+head.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  el.innerHTML = th + rows.join('');
+}
+function fmtHtmlStatus(s){ return s==='-'?'-':`<span class="st ${s}">${s}</span>`; }
+
+function runWorst(){
+  try {
+    const {solver, comps} = buildFromText($('net').value);
+    const wc = worstCase(solver, comps, $('iter').checked);
+    const Ta = parseFloat($('ta').value); const ta = isNaN(Ta)?25:Ta;
+    const pw = powerRows(wc.vTyp, wc.scenarios, comps, ta);
+    Object.assign(state,{solver,comps,vTyp:wc.vTyp,wc,mc:null});
+    const msgs=[];
+    if (solver.validationIssues.length) msgs.push(['warn', solver.validationIssues.map(i=>`[${i.severity}] ${i.line?`line ${i.line}: `:''}${i.message}`).join('\n')]);
+    const d = solver.lastDiag;
+    if (d && (d.cond>COND_WARN || d.residual>RESIDUAL_WARN)) msgs.push(['warn',`Numerical check: condition number ${d.cond.toExponential(2)} / relative residual ${d.residual.toExponential(2)}. Accuracy of the results may be degraded.`]);
+    showMsgs(msgs);
+
+    const nodes = Object.keys(solver.nodeMap).sort(natCmp);
+    const fails = pw.filter(r=>r.status==='FAIL').length, judged = pw.filter(r=>r.status!=='-').length;
+    const chips=[`<span class="chip">Nodes ${nodes.length}</span>`,`<span class="chip">Components ${Object.keys(comps).length}</span>`,
+      `<span class="chip">Unknowns ${d.dim}</span>`,`<span class="chip">Cond. ${d.cond.toExponential(1)}</span>`,
+      `<span class="chip">Ta ${ta} °C</span>`];
+    if (judged) chips.push(fails?`<span class="chip bad">Power FAIL ${fails} / ${judged}</span>`:`<span class="chip good">Power: all ${judged} PASS</span>`);
+    $('chips').innerHTML = chips.join('');
+
+    if (!state.tornadoNode || !(state.tornadoNode in solver.nodeMap)) state.tornadoNode = nodes[0];
+    table($('tNodes'), ['Node','Typ [V]','Min [V]','Max [V]','Span [mV]'],
+      nodes.map(n=>`<tr class="pick${n===state.tornadoNode?' sel':''}" data-n="${esc(n)}"><td>${esc(n)}</td><td class="m">${f4(wc.vTyp[n])}</td><td class="m">${f4(wc.vmin[n])}</td><td class="m">${f4(wc.vmax[n])}</td><td class="m">${((wc.vmax[n]-wc.vmin[n])*1e3).toFixed(2)}</td></tr>`));
+    $('pHead').textContent = `Resistor power dissipation (Ta ${ta} °C, ratings after derating)`;
+    if (pw.length) table($('tPower'), ['Resistor','Typ','Max','Rated','Limit','Load','Result'],
+      pw.map(r=>`<tr><td>${esc(r.name)}</td><td class="m">${r.typ}</td><td class="m">${r.max}</td><td class="m">${r.rated}</td><td class="m">${r.lim}</td><td class="m">${r.load}</td><td>${fmtHtmlStatus(r.status)}</td></tr>`));
+    else $('tPower').innerHTML='<tr><td>No resistors</td></tr>';
+    table($('tAsg'), ['Target','Component states'], wc.asg.map(a=>`<tr><td>${esc(a[0])}</td><td>${esc(a[1])||'(no variation)'}</td></tr>`));
+    fillNodeSelects(nodes);
+    drawTornado();
+    $('v-mc').querySelectorAll('#mcChart,#tMc,#mcChips').forEach(e=>e.innerHTML='');
+    return true;
+  } catch(e){
+    showMsgs([['err', e instanceof NetlistError ? e.message : `Analysis failed: ${e.message}`]]);
+    setTab('wc');
+    return false;
+  }
+}
+function fillNodeSelects(nodes){
+  for (const id of ['torNode','mcNode']){
+    const sel=$(id), cur = id==='torNode'?state.tornadoNode:(sel.value||nodes[0]);
+    sel.innerHTML = nodes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    sel.value = nodes.includes(cur)?cur:nodes[0];
+  }
+}
+
+function drawTornado(){
+  const n = state.tornadoNode; if (!state.solver || n==null) return;
+  $('torNode').value = n;
+  const data = sensitivity(state.solver, state.vTyp, state.comps, n);
+  const el = $('torChart');
+  if (!data.length){ el.innerHTML=''; $('torNote').textContent='No components have tolerances, so a tornado chart cannot be drawn.'; return; }
+  const maxAbs = Math.max(...data.map(d=>Math.max(Math.abs(d.low),Math.abs(d.high))))||1;
+  const unit = maxAbs<1 ? 1e3 : 1, uname = maxAbs<1 ? 'mV' : 'V';
+  const W=640, L=92, R=70, rowH=28, top=22, bot=34, H=top+bot+rowH*data.length;
+  const half = (W-L-R)/2, cx = L+half;
+  // Ticks follow the 1-2-5 series, up to the first value above the maximum
+  const step = niceStep(maxAbs*unit/3);
+  const lim = Math.ceil(maxAbs*unit/step)*step;
+  const sx = v=>cx + (v*unit/lim)*half;
+  let g='';
+  for (let t=-lim; t<=lim+1e-9; t+=step){
+    const x=sx(t/unit);
+    g+=`<line class="gl" x1="${x}" x2="${x}" y1="${top-6}" y2="${H-bot+4}"/><text x="${x}" y="${H-bot+18}" text-anchor="middle">${trimNum(t)}</text>`;
+  }
+  g+=`<text x="${W-R+24}" y="${H-bot+18}" text-anchor="start">${uname}</text>`;
+  data.forEach((d,i)=>{
+    const y=top+i*rowH+4, h=rowH-10;
+    const lo=d.low, hi=d.high;
+    const mk=(v,cls,label)=>{ const x0=sx(0), x1=sx(v), w=Math.abs(x1-x0); if (w<0.5) return '';
+      const rx = Math.min(x0,x1);
+      return `<rect x="${rx}" y="${y}" width="${w}" height="${h}" rx="2" fill="var(--${cls})"><title>${esc(d.name)} ${label}: ${(v*unit>=0?'+':'')}${(v*unit).toFixed(3)} ${uname}</title></rect>`; };
+    g+=`<text class="nm" x="${L-10}" y="${y+h/2+4}" text-anchor="end">${esc(d.name)}</text>`;
+    g+=mk(lo,'lo','Min')+mk(hi,'hi','Max');
+    const far = Math.abs(hi)>=Math.abs(lo)?hi:lo;
+    const tx = sx(far)+(far>=0?6:-6);
+    g+=`<text x="${tx}" y="${y+h/2+4}" text-anchor="${far>=0?'start':'end'}">±${(d.swing*unit/2).toFixed(2)}</text>`;
+  });
+  g+=`<line class="axis" x1="${cx}" x2="${cx}" y1="${top-6}" y2="${H-bot+4}"/>`;
+  el.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tornado chart for node ${esc(n)}">${g}</svg>`;
+  $('torNote').textContent = `Change from Typ = ${f4(state.vTyp[n])} V at node ${n}. Each bar is the voltage change with only that component set to Min or Max; the number at the end is half the span.`;
+  document.querySelectorAll('#tNodes tr.pick').forEach(tr=>tr.classList.toggle('sel', tr.dataset.n===n));
+}
+function niceStep(x){ const e=Math.pow(10,Math.floor(Math.log10(x))), f=x/e; return (f<=1?1:f<=2?2:f<=5?5:10)*e; }
+function trimNum(t){ return Math.abs(t)<1e-12?'0':String(parseFloat(t.toPrecision(6))); }
+
+function runMC(){
+  if (!state.solver && !runWorst()) return;
+  try {
+    const {solver, comps} = buildFromText($('net').value);
+    const runs = Math.max(10, Math.min(50000, parseInt($('runs').value,10)||2000));
+    const sv = $('seed').value.trim();
+    const seed = sv==='' ? null : parseInt(sv,10);
+    if (sv!=='' && isNaN(seed)){ showMsgs([['err','Seed must be an integer.']]); return; }
+    const dist = $('dist').value;
+    const t0=performance.now();
+    const samples = monteCarlo(solver, comps, runs, dist, seed);
+    const ms=Math.round(performance.now()-t0);
+    state.mc = {samples, runs, dist, seed, ms};
+    const nodes=Object.keys(samples).sort(natCmp);
+    $('mcChips').innerHTML = [`<span class="chip">Runs ${runs}</span>`,`<span class="chip">${dist==='gaussian'?'Gaussian':'Uniform'}</span>`,`<span class="chip">Seed ${seed==null?'none':seed}</span>`,`<span class="chip">${ms} ms</span>`].join('');
+    const rows = nodes.map(n=>{ const s=stats(samples[n]); return `<tr class="pick" data-mn="${esc(n)}"><td>${esc(n)}</td><td class="m">${f4(s.mean)}</td><td class="m">${f4(s.sd)}</td><td class="m">${f4(s.mean-3*s.sd)}</td><td class="m">${f4(s.mean+3*s.sd)}</td></tr>`; });
+    table($('tMc'), ['Node','Mean [V]','Std. dev.','−3σ','+3σ'], rows);
+    // Rebuild the options every time so nodes removed by netlist edits do not linger
+    const cur=$('mcNode'), keep=cur.value;
+    cur.innerHTML = nodes.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    cur.value = nodes.includes(keep) ? keep : nodes[0];
+    drawHist();
+    showMsgs(solver.validationIssues.length ? [['warn', solver.validationIssues.map(i=>`[${i.severity}] ${i.line?`line ${i.line}: `:''}${i.message}`).join('\n')]] : []);
+    setTab('mc');
+  } catch(e){ showMsgs([['err', e instanceof NetlistError ? e.message : `Monte Carlo failed: ${e.message}`]]); }
+}
+function stats(a){ let m=0; for (const v of a) m+=v; m/=a.length; let s=0; for (const v of a) s+=(v-m)*(v-m); return {mean:m, sd:Math.sqrt(s/a.length)}; }
+function drawHist(){
+  if (!state.mc) return;
+  const n=$('mcNode').value, data=state.mc.samples[n]; if(!data) return;
+  const {mean,sd}=stats(data);
+  let lo=Math.min(...data), hi=Math.max(...data);
+  if (hi-lo<1e-12){ lo-=1e-3; hi+=1e-3; }
+  const B=30, bw=(hi-lo)/B, cnt=new Array(B).fill(0);
+  for (const v of data) cnt[Math.min(B-1,Math.floor((v-lo)/bw))]++;
+  const dens = cnt.map(c=>c/data.length/bw);
+  const fit = x=>sd>0?Math.exp(-0.5*((x-mean)/sd)**2)/(sd*Math.sqrt(2*Math.PI)):0;
+  const ymax = Math.max(...dens, sd>0?fit(mean):0)*1.08;
+  const W=640,H=300,L=52,R=16,T=14,Bm=44, pw=W-L-R, ph=H-T-Bm;
+  const sx=v=>L+(v-lo)/(hi-lo)*pw, sy=v=>T+ph-(v/ymax)*ph;
+  let g='';
+  const ys=niceStep(ymax/4);
+  for (let t=0;t<=ymax;t+=ys) g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${sy(t)}" y2="${sy(t)}"/><text x="${L-6}" y="${sy(t)+4}" text-anchor="end">${trimNum(t)}</text>`;
+  const xs=niceStep((hi-lo)/5);
+  for (let t=Math.ceil(lo/xs)*xs; t<=hi+1e-12; t+=xs) g+=`<line class="axis" x1="${sx(t)}" x2="${sx(t)}" y1="${T+ph}" y2="${T+ph+4}"/><text x="${sx(t)}" y="${T+ph+18}" text-anchor="middle">${trimNum(t)}</text>`;
+  dens.forEach((d,i)=>{ const x=sx(lo+i*bw), w=Math.max(1,sx(lo+(i+1)*bw)-x-2);
+    if (cnt[i]) g+=`<rect x="${x+1}" y="${sy(d)}" width="${w}" height="${T+ph-sy(d)}" rx="2" fill="var(--bar)" opacity=".85"><title>${(lo+i*bw).toFixed(4)} – ${(lo+(i+1)*bw).toFixed(4)} V : ${cnt[i]} runs</title></rect>`; });
+  g+=`<line class="axis" x1="${L}" x2="${W-R}" y1="${T+ph}" y2="${T+ph}"/>`;
+  if (sd>0){ let p=''; for (let i=0;i<=80;i++){ const x=lo+(hi-lo)*i/80; p+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fit(x)).toFixed(1); }
+    g+=`<path d="${p}" fill="none" stroke="var(--fit)" stroke-width="2" stroke-dasharray="5 4"/>`; }
+  g+=`<line x1="${sx(mean)}" x2="${sx(mean)}" y1="${T}" y2="${T+ph}" stroke="var(--ink)" stroke-width="1.5"/>`;
+  g+=`<text x="${W/2}" y="${H-6}" text-anchor="middle">Voltage at node ${esc(n)} [V] / vertical: probability density</text>`;
+  $('mcChart').innerHTML = `<div class="legend" style="margin-bottom:6px"><span><i style="background:var(--bar)"></i>Simulation</span><span><i style="background:var(--fit)"></i>Normal fit</span><span><i style="background:var(--ink)"></i>Mean ${f4(mean)} V</span></div><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Voltage distribution at node ${esc(n)}">${g}</svg>`;
+  document.querySelectorAll('#tMc tr.pick').forEach(tr=>tr.classList.toggle('sel', tr.dataset.mn===n));
+}
+
+// events
+(function init(){
+  $('preset').innerHTML = PRESETS.map((p,i)=>`<option value="${i}">${p[1]}</option>`).join('');
+  $('net').value = PRESETS[0][2];
+  $('ta').value = 85;
+  $('preset').addEventListener('change',e=>{ const p=PRESETS[+e.target.value]; $('net').value=p[2]; state.tornadoNode=null; setTab('wc'); runWorst(); });
+  $('btnRun').addEventListener('click',()=>{ setTab('wc'); runWorst(); });
+  $('btnMc').addEventListener('click',runMC);
+  $('tabs').addEventListener('click',e=>{ const b=e.target.closest('.tab'); if(b) setTab(b.dataset.t); });
+  $('tNodes').addEventListener('click',e=>{ const tr=e.target.closest('tr.pick'); if(!tr) return; state.tornadoNode=tr.dataset.n; drawTornado(); setTab('tor'); });
+  $('torNode').addEventListener('change',e=>{ state.tornadoNode=e.target.value; drawTornado(); });
+  $('mcNode').addEventListener('change',drawHist);
+  $('tMc').addEventListener('click',e=>{ const tr=e.target.closest('tr.pick'); if(!tr) return; $('mcNode').value=tr.dataset.mn; drawHist(); });
+  runWorst();
+})();
+</script>
+
+</body>
+</html>
